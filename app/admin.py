@@ -40,7 +40,7 @@ class Singleton(admin.ModelAdmin):
 class ClientsAdmin(admin.ModelAdmin):
     form = forms.ClientsForm
     list_display = ('IP_Address', 'MAC_Address', 'Device_Name', 'Connection_Status', 'Time_Left', 'running_time')
-    readonly_fields = ('IP_Address', 'MAC_Address', 'Expire_On', 'Notification_ID', 'Notified_Flag', 'Date_Created')
+    readonly_fields = ('IP_Address', 'MAC_Address', 'Expire_On', 'Notification_ID', 'Notified_Flag', 'Date_Created', 'FAS_Session')
     actions = ['Connect', 'Disconnect', 'Pause', 'Whitelist']
 
     def changelist_view(self, request, extra_context=None):
@@ -267,9 +267,11 @@ admin.site.register(models.Device, DeviceAdmin)
 admin.site.register(models.Vouchers, VouchersAdmin)
 admin.site.register(models.PushNotifications, PushNotificationsAdmin)
 
-settings = models.Settings.objects.get(pk=1)
-admin_name = settings.Hotspot_Name
 
-admin.AdminSite.site_header = admin_name
-admin.AdminSite.site_title = admin_name
+def admin_name():
+    settings = models.Settings.objects.get(pk=1)
+    return settings.Hotspot_Name
+
+admin.AdminSite.site_header = admin_name()
+admin.AdminSite.site_title = admin_name()
 admin.AdminSite.index_template = 'admin/index2.html'

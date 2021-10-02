@@ -1,22 +1,21 @@
 from django.core.exceptions import ObjectDoesNotExist
-from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.http import JsonResponse, HttpResponseForbidden, HttpResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.shortcuts import render, redirect
 from django.views import View
-from django.views.generic.edit import UpdateView
 from django.utils import timezone
-from django.db import transaction
-from django.db.models import Sum, F
-from django.db.models.functions import Greatest
+from django.db.models import F
 from django.contrib import messages
 from datetime import timedelta
 from getmac import getmac
 from app.opw import cc, grc, fprint
 from app import models
-import subprocess
-import time, math, json
+
+from base64 import b64decode
+import json
+
 
 local_ip = ['::1', '127.0.0.1', '10.0.0.1']
 
@@ -70,7 +69,6 @@ def api_response(code):
 
     return  response
 
-
 def getDeviceInfo(request):
         info = dict()
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -86,99 +84,112 @@ def getDeviceInfo(request):
         info['mac'] = mac
         return info
 
+def getClientInfo(ip, mac, fas):
+    info = dict()
 
-class Portal(View):
-    template_name = 'captive.html'
-    
-    def getClientInfo(self, ip, mac):
-        info = dict()
+    if models.Whitelist.objects.filter(MAC_Address=mac).exists():
+        whitelisted_flg = True
+        status = 'Connected'
+        time_left = timedelta(0)
+        total_coins = 0
+        notif_id = ''
+        vouchers = None
 
-        if models.Whitelist.objects.filter(MAC_Address=mac).exists():
-            whitelisted_flg = True
-            status = 'Connected'
-            time_left = timedelta(0)
+    else:
+        whitelisted_flg = False
+
+        default_values = {
+            'IP_Address': ip,
+            'FAS_Session': fas
+        }
+
+        client, created = models.Clients.objects.get_or_create(MAC_Address=mac, defaults=default_values)
+        if not created:
+            updated = False
+            if client.IP_Address != ip:
+                client.IP_Address = ip
+                updated = True
+            if client.FAS_Session != fas:
+                client.FAS_Session = fas
+                updated = True
+            if updated:
+                client.save()
+
+        try:
+            coin_queue = client.coin_queue.get()
+            total_coins = coin_queue.Total_Coins
+        except ObjectDoesNotExist:
             total_coins = 0
-            notif_id = ''
+
+        try:
+            vouchers = models.Vouchers.objects.filter(Voucher_client=mac, Voucher_status='Not Used')
+        except ObjectDoesNotExist:
             vouchers = None
 
-        else:
-            whitelisted_flg = False
-            client, created = models.Clients.objects.get_or_create(MAC_Address=mac, defaults={'IP_Address': ip})
-            if not created:
-                if client.IP_Address != ip:
-                    client.IP_Address = ip
-                    client.save()
+        status = client.Connection_Status
 
-            try:
-                coin_queue = models.CoinQueue.objects.get(Client=mac)
-                total_coins = coin_queue.Total_Coins
-            except ObjectDoesNotExist:
-                total_coins = 0
+        if status == 'Connected':
+            time_left = client.running_time
 
-            try:
-                vouchers = models.Vouchers.objects.filter(Voucher_client=mac, Voucher_status='Not Used')
-            except ObjectDoesNotExist:
-                vouchers = None
+        elif status == 'Disconnected':
+            time_left = timedelta(0)
 
-            status = client.Connection_Status
+        elif status == 'Paused':
+            time_left = client.Time_Left
 
-            if status == 'Connected':
-                time_left = client.running_time
+        notif_id = client.Notification_ID
 
-            elif status == 'Disconnected':
-                time_left = timedelta(0)
+    info['ip'] = ip
+    info['mac'] = mac
+    info['whitelisted'] = whitelisted_flg
+    info['status'] = status
+    info['time_left'] = int(timedelta.total_seconds(time_left))
+    info['total_coins'] = total_coins
+    info['vouchers'] = vouchers
+    info['appNotification_ID'] = notif_id
 
-            elif status == 'Paused':
-                time_left = client.Time_Left
+    return info
 
-            notif_id = client.Notification_ID
+def getSettings():
+    info = dict()
+    settings = models.Settings.objects.get(pk=1)
+    notif_settings = models.PushNotifications.objects.get(pk=1)
 
-        info['ip'] = ip
-        info['mac'] = mac
-        info['whitelisted'] = whitelisted_flg
-        info['status'] = status
-        info['time_left'] = int(timedelta.total_seconds(time_left))
-        info['total_coins'] = total_coins
-        info['vouchers'] = vouchers
-        info['appNotification_ID'] = notif_id
+    rate_type = settings.Rate_Type
+    if rate_type == 'auto':
+        base_rate = settings.Base_Value
+        rates = models.Rates.objects.annotate(auto_rate=F('Denom')*int(base_rate.total_seconds())).values('Denom', 'auto_rate')
+        info['rates'] = rates
+    else:
+        info['rates'] = models.Rates.objects.all()
 
-        return info
+    if notif_settings.Enabled == True and notif_settings.app_id:
+        info['push_notif'] = notif_settings
+    else:
+        info['push_notif'] = None
 
-    def getSettings(self):
-        info = dict()
-        settings = models.Settings.objects.get(pk=1)
-        notif_settings = models.PushNotifications.objects.get(pk=1)
+    info['rate_type'] = rate_type
+    info['hotspot'] = settings.Hotspot_Name
+    info['slot_timeout'] = settings.Slot_Timeout
+    info['background'] = settings.BG_Image
+    info['voucher_flg'] = settings.Vouchers_Flg
+    info['pause_resume_flg'] = settings.Pause_Resume_Flg
+    info['pause_resume_enable_time'] = 0 if not settings.Disable_Pause_Time else int(timedelta.total_seconds(settings.Disable_Pause_Time))
+    info['redir_url'] = settings.Redir_Url
+    info['opennds_gateway'] = settings.OpenNDS_Gateway
 
-        rate_type = settings.Rate_Type
-        if rate_type == 'auto':
-            base_rate = settings.Base_Value
-            rates = models.Rates.objects.annotate(auto_rate=F('Denom')*int(base_rate.total_seconds())).values('Denom', 'auto_rate')
-            info['rates'] = rates
-        else:
-            info['rates'] = models.Rates.objects.all()
+    return info
 
-        if notif_settings.Enabled == True and notif_settings.app_id:
-            info['push_notif'] = notif_settings
-        else:
-            info['push_notif'] = None
 
-        info['rate_type'] = rate_type
-        info['hotspot'] = settings.Hotspot_Name
-        info['slot_timeout'] = settings.Slot_Timeout
-        info['background'] = settings.BG_Image
-        info['voucher_flg'] = settings.Vouchers_Flg
-        info['pause_resume_flg'] = settings.Pause_Resume_Flg
-        info['pause_resume_enable_time'] = 0 if not settings.Disable_Pause_Time else int(timedelta.total_seconds(settings.Disable_Pause_Time))
-        info['redir_url'] = settings.Redir_Url
-
-        return info
+class Portal_(View):
+    template_name = 'captive.html'
 
     def get(self, request, template_name=template_name):
         device_info = getDeviceInfo(request)
         ip = device_info['ip']
         mac = device_info['mac']
-        info = self.getClientInfo(ip, mac)
-        settings = self.getSettings()
+        info = getClientInfo(ip, mac)
+        settings = getSettings()
 
         context = {**settings, **info}
         return render(request, template_name, context=context)
@@ -201,6 +212,109 @@ class Portal(View):
 
         return JsonResponse(resp, safe=False)
 
+
+def generatePayload(fas):
+    # decrypted = b64decode(b64decode(fas.encode('utf-8'))).decode('utf-8')
+    decrypted =b64decode(fas.encode('utf-8')).decode('utf-8')
+    fas_data = decrypted.split(', ')
+    payload = dict()
+    for data in fas_data:
+        if '=' in data:
+            parsed_data = data.split('=')
+            payload[parsed_data[0]] = None if parsed_data[1] == '(null)' else parsed_data[1]
+    return payload
+
+class Portal(View):
+    template_name = 'captive.html'
+    insert_coin_tenplate = 'insert_coin.html'
+
+    def get(self, request, fas=None):
+        ip = None
+        mac = None
+        settings = getSettings()
+
+        if fas:
+            try:
+                client = models.Clients.objects.get(FAS_Session=fas)
+            except models.Clients.DoesNotExist:
+                client = None
+
+            payload = generatePayload(fas)
+            if 'clientip' in payload and 'clientmac' in payload:
+
+                if client and client.MAC_Address != payload['clientmac']:
+                    return redirect(settings['opennds_gateway'])
+
+                request.session['ip_address'] = payload['clientip']
+                request.session['mac_address'] = payload['clientmac']
+                request.session['fas'] = fas
+
+                ip = payload['clientip']
+                mac = payload['clientmac']
+
+                return redirect('app:portal')
+            else:
+                return redirect(settings['opennds_gateway'])
+        else:
+            mac_address = request.session.get('mac_address', None)
+            ip_address = request.session.get('ip_address', None)
+            fas_session = request.session.get('fas', None)
+
+            if mac_address and ip_address and fas_session:
+                ip = ip_address
+                mac = mac_address
+                fas = fas_session 
+            else:
+                return redirect(settings['opennds_gateway'])
+
+        info = getClientInfo(ip, mac, fas)
+        context = {**settings, **info, 'fas': fas}
+        return render(request, self.template_name, context=context)
+
+    def post(self, request, fas=None):
+        mac = request.session.get('mac_address', None)
+        ip = request.session.get('ip_address', None)
+        settings = getSettings()
+
+        if mac and ip:
+            if 'pause_resume' in request.POST:
+                action = request.POST['pause_resume']
+                try:
+                    client = models.Clients.objects.get(MAC_Address=mac)
+                    settings = getSettings()
+                    pause_resume_flg = settings['pause_resume_flg']
+
+                    if pause_resume_flg:
+                        if action == 'pause':
+                            pause_resume_enable_time = settings['pause_resume_enable_time']
+                            client_time = timedelta.total_seconds(client.running_time)
+
+                            if client_time > pause_resume_enable_time:
+                                client.Pause()
+                                messages.success(request, '<strong>Internet connection paused.</strong> Resume when you\'re ready.')
+
+                            else:
+                                # TODO: Provide a proper message
+                                messages.error(request, 'Pause is not allowed.')
+
+                        elif action == 'resume':
+                            client.Connect()
+                            messages.success(request, '<strong>Internet connection resumed.</strong> Enjoy browsing the internet.')
+                        else:
+                            messages.error(request, 'Invalid action')
+                    else:
+                        messages.error(request, 'Invalid action')
+
+                except ObjectDoesNotExist:
+                    # Maybe redirect to Opennds gateway
+                    messages.error(request, 'Client not found')
+
+            if 'insert_coin' in request.POST:
+                print('insert coin invoked')
+        else:
+            return redirect(settings['opennds_gateway'])
+
+        return redirect('app:portal')
 
 class Slot(View):
 
@@ -317,7 +431,6 @@ class Pay(View):
         else:
             raise Http404("Page not found")
 
-
 class Commit(View):
     def get(self, request):
         if not request.is_ajax():
@@ -384,7 +497,6 @@ class Browse(View):
         else:
             raise Http404("Page not found")
 
-
 class Pause(View):
     def get(self, request):
         if request.is_ajax():
@@ -400,17 +512,21 @@ class Pause(View):
 
                     resp = api_response(200)
                     resp['description'] = 'Paused'
+                    
 
                 elif action == 'resume':
                     client.Connect()
 
                     resp = api_response(200)
                     resp['description'] = 'Connected'
+                    
                 else:
                     resp = api_response(700)
+                    
 
             except ObjectDoesNotExist:
                 resp = api_response(800)
+                
 
             return JsonResponse(data=resp)
 
@@ -486,7 +602,6 @@ class Redeem(View):
             raise Http404("Page not found")
 
 # Control Section
-
 class GenerateRC(View):
     def post(self, request):
         if request.is_ajax() and request.user.is_authenticated:
@@ -499,7 +614,6 @@ class GenerateRC(View):
                 return HttpResponse('Device is already activated')
         else:
             raise Http404("Page not found")
-
 
 class ActivateDevice(View):
     def post(self, request):

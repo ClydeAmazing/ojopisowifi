@@ -17,8 +17,8 @@ class Clients(models.Model):
     Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify client internet download bandwidth in Kbps. No value = unlimited bandwidth', null=True, blank=True )
     Notification_ID = models.CharField(verbose_name = 'Notification ID', max_length=255, null=True, blank = True)
     Notified_Flag = models.BooleanField(default=False)
-    Date_Created = models.DateTimeField(default=timezone.now)
-
+    Date_Created = models.DateTimeField(auto_now_add=True)
+    FAS_Session = models.CharField(max_length=500, unique=True)
 
     @property
     def running_time(self):
@@ -163,7 +163,8 @@ class Rates(models.Model):
 
 
 class CoinQueue(models.Model):
-    Client = models.CharField(max_length=17, null=True, blank=True)
+    # Client = models.CharField(max_length=17, null=True, blank=True)
+    Client = models.ForeignKey(Clients, on_delete=models.CASCADE, related_name='coin_queue')
     Total_Coins = models.IntegerField(null=True, blank=True, default=0)
 
     @property
@@ -224,6 +225,7 @@ class Settings(models.Model):
     Disable_Pause_Time = models.DurationField(default=timezone.timedelta(minutes=0), null=True, blank=True, help_text='Disables Pause time button if remaining time is less than the specified time hh:mm:ss format.')
     Coinslot_Pin = models.IntegerField(verbose_name='Coinslot Pin', help_text='Please refer raspberry/orange pi GPIO.BOARD pinout.', null=True, blank=True)
     Light_Pin = models.IntegerField(verbose_name='Light Pin', help_text='Please refer raspberry/orange pi GPIO.BOARD pinout.', null=True, blank=True)
+    OpenNDS_Gateway = models.URLField(max_length=200, default='http://10.0.0.1:2050', help_text='Captive portal gateway server url.')
 
     def clean(self, *args, **kwargs):
         if self.Coinslot_Pin or self.Light_Pin:

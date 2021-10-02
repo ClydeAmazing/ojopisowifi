@@ -6,7 +6,10 @@ from app.views import *
 app_name = 'app'
 
 urlpatterns = [
-    path('portal', never_cache(Portal.as_view()), name="portal"),
+    # path('', Portal.as_view(), name="index"),
+    path('portal', Portal.as_view(), name='portal'),
+    path('portal/<fas>', Portal.as_view(), name="fas_decode"),
+    # path('portal', never_cache(Portal_.as_view()), name="portal"),
     path('pay', Pay.as_view()),
     path('slot', Slot.as_view()),
     path('commit', Commit.as_view()),
