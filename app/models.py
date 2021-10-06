@@ -1,11 +1,52 @@
+from django.core import validators
 from django.core.exceptions import ValidationError
 from django.contrib import messages
 from django.db import models
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.urls import reverse
+from django.core.validators import MaxValueValidator, MinValueValidator
 import subprocess
 import string, random, os, math
+
+class Settings(models.Model):
+    rate_type_choices = (
+        ('auto', 'Minutes/Peso'),
+        ('manual', 'Custom Rate'),
+    )
+    enable_disable_choices = (
+        (1, 'Enable'),
+        (0, 'Disable'),
+    )
+
+    def get_image_path(instance, filename):
+        return os.path.join(str(instance.id), filename)
+
+    Hotspot_Name = models.CharField(max_length=255)
+    Hotspot_Address = models.CharField(max_length=255, null=True, blank=True)
+    BG_Image = models.ImageField(upload_to=get_image_path, blank=True, null=True)
+    Slot_Timeout = models.PositiveIntegerField(help_text='Slot timeout in seconds. Default is 15', default=15, validators=[MinValueValidator(1), MaxValueValidator(30)])
+    Rate_Type = models.CharField(max_length=25, default="auto", choices=rate_type_choices, help_text='Select "Minutes/Peso" to use  Minutes / Peso value, else use "Custom Rate" to manually setup Rates based on coin value.')
+    Base_Value = models.DurationField(default=timezone.timedelta(minutes=0), verbose_name='Minutes / Peso')
+    Inactive_Timeout = models.IntegerField(verbose_name='Inactive Timeout', help_text='Timeout before an idle client (status = Disconnected) is removed from the client list. (Minutes)')
+    Redir_Url = models.CharField(max_length=255, verbose_name='Redirect URL', help_text='Redirect url after a successful login. If not set, will default to the timer page.', null=True, blank=True)
+    Vouchers_Flg = models.IntegerField(verbose_name='Vouchers', default=1, choices=enable_disable_choices, help_text='Enables voucher module.')
+    Pause_Resume_Flg = models.IntegerField(verbose_name='Pause/Resume', default=1, choices=enable_disable_choices, help_text='Enables pause/resume function.')
+    Disable_Pause_Time = models.DurationField(default=timezone.timedelta(minutes=0), null=True, blank=True, help_text='Disables Pause time button if remaining time is less than the specified time hh:mm:ss format.')
+    Coinslot_Pin = models.IntegerField(verbose_name='Coinslot Pin', help_text='Please refer raspberry/orange pi GPIO.BOARD pinout.', null=True, blank=True)
+    Light_Pin = models.IntegerField(verbose_name='Light Pin', help_text='Please refer raspberry/orange pi GPIO.BOARD pinout.', null=True, blank=True)
+    OpenNDS_Gateway = models.URLField(max_length=200, default='http://10.0.0.1:2050', help_text='Captive portal gateway server url.')
+
+    def clean(self, *args, **kwargs):
+        if self.Coinslot_Pin or self.Light_Pin:
+            if self.Coinslot_Pin == self.Light_Pin:
+                raise ValidationError('Coinslot Pin should not be the same as Light Pin.')
+
+    class Meta:
+        verbose_name = 'Settings'
+
+    def __str__(self):
+        return 'Settings'
 
 class Clients(models.Model):
     IP_Address = models.CharField(max_length=15, verbose_name='IP')
@@ -19,6 +60,7 @@ class Clients(models.Model):
     Notified_Flag = models.BooleanField(default=False)
     Date_Created = models.DateTimeField(auto_now_add=True)
     FAS_Session = models.CharField(max_length=500, unique=True)
+    Settings = models.ForeignKey(Settings, on_delete=models.CASCADE)
 
     @property
     def running_time(self):
@@ -134,7 +176,8 @@ class CoinSlot(models.Model):
         return random_code
 
     Edit = 'Edit'
-    Client = models.CharField(max_length=17, null=True, blank=True)
+    # Client = models.CharField(max_length=17, null=True, blank=True)
+    Client = models.ForeignKey(Clients, on_delete=models.SET_NULL, null=True, blank=True)
     Last_Updated = models.DateTimeField(null=True, blank=True)
     Slot_ID = models.CharField(default=generate_code, unique=True, max_length=10, null=False, blank=False)
     Slot_Address = models.CharField(unique=True, max_length=17, null=False, blank=False, default='00:00:00:00:00:00')
@@ -197,46 +240,6 @@ class CoinQueue(models.Model):
             return 'Coin queue for: ' + self.Client
         else:
             return 'Record'
-
-
-class Settings(models.Model):
-    rate_type_choices = (
-        ('auto', 'Minutes/Peso'),
-        ('manual', 'Custom Rate'),
-    )
-    enable_disable_choices = (
-        (1, 'Enable'),
-        (0, 'Disable'),
-    )
-
-    def get_image_path(instance, filename):
-        return os.path.join(str(instance.id), filename)
-
-    Hotspot_Name = models.CharField(max_length=255)
-    Hotspot_Address = models.CharField(max_length=255, null=True, blank=True)
-    BG_Image = models.ImageField(upload_to=get_image_path, blank=True, null=True)
-    Slot_Timeout = models.IntegerField(help_text='Slot timeout in seconds.')
-    Rate_Type = models.CharField(max_length=25, default="auto", choices=rate_type_choices, help_text='Select "Minutes/Peso" to use  Minutes / Peso value, else use "Custom Rate" to manually setup Rates based on coin value.')
-    Base_Value = models.DurationField(default=timezone.timedelta(minutes=0), verbose_name='Minutes / Peso')
-    Inactive_Timeout = models.IntegerField(verbose_name='Inactive Timeout', help_text='Timeout before an idle client (status = Disconnected) is removed from the client list. (Minutes)')
-    Redir_Url = models.CharField(max_length=255, verbose_name='Redirect URL', help_text='Redirect url after a successful login. If not set, will default to the timer page.', null=True, blank=True)
-    Vouchers_Flg = models.IntegerField(verbose_name='Vouchers', default=1, choices=enable_disable_choices, help_text='Enables voucher module.')
-    Pause_Resume_Flg = models.IntegerField(verbose_name='Pause/Resume', default=1, choices=enable_disable_choices, help_text='Enables pause/resume function.')
-    Disable_Pause_Time = models.DurationField(default=timezone.timedelta(minutes=0), null=True, blank=True, help_text='Disables Pause time button if remaining time is less than the specified time hh:mm:ss format.')
-    Coinslot_Pin = models.IntegerField(verbose_name='Coinslot Pin', help_text='Please refer raspberry/orange pi GPIO.BOARD pinout.', null=True, blank=True)
-    Light_Pin = models.IntegerField(verbose_name='Light Pin', help_text='Please refer raspberry/orange pi GPIO.BOARD pinout.', null=True, blank=True)
-    OpenNDS_Gateway = models.URLField(max_length=200, default='http://10.0.0.1:2050', help_text='Captive portal gateway server url.')
-
-    def clean(self, *args, **kwargs):
-        if self.Coinslot_Pin or self.Light_Pin:
-            if self.Coinslot_Pin == self.Light_Pin:
-                raise ValidationError('Coinslot Pin should not be the same as Light Pin.')
-
-    class Meta:
-        verbose_name = 'Settings'
-
-    def __str__(self):
-        return 'Settings'
 
 class Network(models.Model):
     Edit = "Edit"

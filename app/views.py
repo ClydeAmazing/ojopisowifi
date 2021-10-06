@@ -13,6 +13,9 @@ from getmac import getmac
 from app.opw import cc, grc, fprint
 from app import models
 
+from django.http import StreamingHttpResponse
+import datetime, time
+
 from base64 import b64decode
 import json
 
@@ -224,9 +227,16 @@ def generatePayload(fas):
             payload[parsed_data[0]] = None if parsed_data[1] == '(null)' else parsed_data[1]
     return payload
 
+def Stream(request):
+    def event_stream():
+        while True:
+            time.sleep(1)
+            yield 'data: The server time is: %s\n\n' % datetime.datetime.now()
+    return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+
 class Portal(View):
     template_name = 'captive.html'
-    insert_coin_tenplate = 'insert_coin.html'
+    insert_coin_template = 'insert_coin.html'
 
     def get(self, request, fas=None):
         ip = None
@@ -301,16 +311,53 @@ class Portal(View):
                             client.Connect()
                             messages.success(request, '<strong>Internet connection resumed.</strong> Enjoy browsing the internet.')
                         else:
-                            messages.error(request, 'Invalid action')
+                            # Invalid action
+                            resp = api_response(700)
+                            messages.error(request, resp['description'])
                     else:
-                        messages.error(request, 'Invalid action')
+                        # Invalid action
+                        resp = api_response(700)
+                        messages.error(request, resp['description'])
 
-                except ObjectDoesNotExist:
+                except models.Clients.DoesNotExist:
                     # Maybe redirect to Opennds gateway
-                    messages.error(request, 'Client not found')
+
+                    # Client not found error
+                    resp = api_response(800)
+                    messages.error(request, resp['description'])
 
             if 'insert_coin' in request.POST:
-                print('insert coin invoked')
+                try:
+                    client = models.Clients.objects.get(MAC_Address = mac)
+                    slot_timeout = client.Settings.Slot_Timeout
+                    
+                    slot_info = models.CoinSlot.objects.get(id=1)
+
+                    if slot_info.Client == client:
+                        slot_info.Last_Updated = timezone.now()
+                        slot_info.save()
+
+                        # Invoke Streaming Http Response here
+                        return render(request, self.insert_coin_template, {})
+
+                    else:
+                        time_diff = timedelta.total_seconds(timezone.now()-slot_info.Last_Updated)
+                        if timedelta(seconds=time_diff).total_seconds() > slot_timeout:
+                            slot_info.Client = client
+                            slot_info.Last_Updated = timezone.now()
+                            slot_info.save()
+
+                            # subprocess.run(['gpio', '-1', 'write', str(settings.Light_Pin), '1'])
+                            # Invoke Streaming Http Response here
+
+                        else:
+                            resp = api_response(600)
+                            messages.error(request, resp['description'])
+
+                except models.Clients.DoesNotExist:
+                    # probably session timed out?
+                    resp = api_response(500)
+                    messages.error(request, resp['description'])
         else:
             return redirect(settings['opennds_gateway'])
 
