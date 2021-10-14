@@ -142,14 +142,34 @@ def getClientInfo(ip, mac, fas):
 
         notif_id = client.Notification_ID
 
+        # Coinslot status
+        try:
+            coinslot = models.CoinSlot.objects.get(Client=client)
+            time_diff = timedelta.total_seconds(timezone.now()-coinslot.Last_Updated)
+
+            slot_timeout = client.Settings.Slot_Timeout
+            if timedelta(seconds=time_diff).total_seconds() < slot_timeout:
+                insert_coin = 100 - ((timedelta(seconds=time_diff).total_seconds()/slot_timeout) * 100)
+                insert_coin_timeout = slot_timeout - timedelta(seconds=time_diff).total_seconds()
+            else:
+                insert_coin = 0
+                insert_coin_timeout = 0
+
+        except models.CoinSlot.DoesNotExist:
+            insert_coin = 0
+            insert_coin_timeout = 0
+
     info['ip'] = ip
     info['mac'] = mac
     info['whitelisted'] = whitelisted_flg
     info['status'] = status
-    info['time_left'] = int(timedelta.total_seconds(time_left))
+    info['time_left'] = timedelta.total_seconds(time_left)
+    info['total_time'] = client.total_time
     info['total_coins'] = total_coins
     info['vouchers'] = vouchers
     info['appNotification_ID'] = notif_id
+    info['insert_coin'] = insert_coin
+    info['insert_coin_timeout'] = insert_coin_timeout
 
     return info
 
@@ -273,7 +293,7 @@ class Portal(View):
             if mac_address and ip_address and fas_session:
                 ip = ip_address
                 mac = mac_address
-                fas = fas_session 
+                fas = fas_session
             else:
                 return redirect(settings['opennds_gateway'])
 
@@ -331,14 +351,12 @@ class Portal(View):
                     client = models.Clients.objects.get(MAC_Address = mac)
                     slot_timeout = client.Settings.Slot_Timeout
                     
+                    # TODO: Make this coinslot assignment dynamic
                     slot_info = models.CoinSlot.objects.get(id=1)
 
                     if slot_info.Client == client:
                         slot_info.Last_Updated = timezone.now()
                         slot_info.save()
-
-                        # Invoke Streaming Http Response here
-                        return render(request, self.insert_coin_template, {})
 
                     else:
                         time_diff = timedelta.total_seconds(timezone.now()-slot_info.Last_Updated)
@@ -347,15 +365,13 @@ class Portal(View):
                             slot_info.Last_Updated = timezone.now()
                             slot_info.save()
 
-                            # subprocess.run(['gpio', '-1', 'write', str(settings.Light_Pin), '1'])
-                            # Invoke Streaming Http Response here
-
                         else:
                             resp = api_response(600)
                             messages.error(request, resp['description'])
 
+                    messages.success(request, 'Insert coin', extra_tags='insert_coin')
+
                 except models.Clients.DoesNotExist:
-                    # probably session timed out?
                     resp = api_response(500)
                     messages.error(request, resp['description'])
         else:

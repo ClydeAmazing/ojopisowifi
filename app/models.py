@@ -53,6 +53,7 @@ class Clients(models.Model):
     MAC_Address = models.CharField(max_length=255, verbose_name='MAC Address', unique=True)
     Device_Name = models.CharField(max_length=255, verbose_name='Device Name', null=True, blank=True)
     Time_Left = models.DurationField(default=timezone.timedelta(minutes=0))
+    Connected_On = models.DateTimeField(null=True, blank=True)
     Expire_On = models.DateTimeField(null=True, blank=True)
     Upload_Rate = models.IntegerField(verbose_name='Upload Bandwidth', help_text='Specify client internet upload bandwidth in Kbps. No value = unlimited bandwidth', null=True, blank=True )
     Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify client internet download bandwidth in Kbps. No value = unlimited bandwidth', null=True, blank=True )
@@ -74,6 +75,13 @@ class Clients(models.Model):
                 return running_time
 
     @property
+    def total_time(self):
+        if self.Expire_On and self.Connected_On:
+            return timedelta.total_seconds(self.Expire_On - self.Connected_On)
+        else:
+            return 0
+
+    @property
     def Connection_Status(self):
         if self.running_time > timedelta(0):
             return 'Connected'
@@ -92,6 +100,7 @@ class Clients(models.Model):
             else:
                 self.Expire_On = timezone.now() + total_time
 
+            self.Connected_On = timezone.now()
             self.Time_Left = timedelta(0)
 
             push_notif = PushNotifications.objects.get(pk=1)
@@ -109,6 +118,7 @@ class Clients(models.Model):
         success_flag = False
         if self.Connection_Status == 'Connected':
             self.Expire_On = None
+            self.Connected_On = None
             self.Time_Left = timedelta(0)
             self.Notified_Flag = False
             self.save()

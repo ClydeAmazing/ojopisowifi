@@ -13,10 +13,12 @@
 if(typeof(EventSource) !== "undefined") {
   var source = new EventSource("{% url 'app:stream' %}");
   source.onmessage = function(event) {
-    document.getElementById("result").innerHTML += event.data + "<br>";
+    // document.getElementById("result").innerHTML += event.data + "<br>";
+    console.log(event.data);
   };
 } else {
-  document.getElementById("result").innerHTML = "Sorry, your browser does not support server-sent events...";
+  // document.getElementById("result").innerHTML = "Sorry, your browser does not support server-sent events...";
+  console.log('Sorry, your browser does not support server-sent events...');
 }
 </script>
 </html>

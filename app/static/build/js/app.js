@@ -1,7 +1,6 @@
 $(function(){
     var btn_done = document.getElementById("btn-done");
     var coins_audio = document.getElementById("coins_audio");
-    var secs = 0;
 
     if (btn_done){
         if (btn_done.addEventListener){
@@ -47,33 +46,33 @@ $(function(){
         })
     };
 
-    var btn_insert_coin = document.getElementById("btn-insert-coin");
+    // var btn_insert_coin = document.getElementById("btn-insert-coin");
 
-    if (btn_insert_coin){
-        if (btn_insert_coin.addEventListener){
-            btn_insert_coin.addEventListener("click", InsertCoin);
-        }else if (btn_insert_coin.attachEvent){
-            btn_insert_coin.attachEvent("onclick", InsertCoin);
-        }else {
-            btn_insert_coin.onclick = InsertCoin;
-        }
-    }
+    // if (btn_insert_coin){
+    //     if (btn_insert_coin.addEventListener){
+    //         btn_insert_coin.addEventListener("click", InsertCoin);
+    //     }else if (btn_insert_coin.attachEvent){
+    //         btn_insert_coin.attachEvent("onclick", InsertCoin);
+    //     }else {
+    //         btn_insert_coin.onclick = InsertCoin;
+    //     }
+    // }
 
-    function InsertCoin(){
-        var data = {
-            'csrfmiddlewaretoken': token,
-            'ip': ip_add,
-            'mac': mac_add
-        }
-        $('.btn-insert-coin').css('opacity', '0.5').attr('disabled', 'disabled');
-        $.ajax({
-            method: 'POST',
-            url: '/app/slot',
-            data: data,
-            success: coinslot_status_success,
-            error: coinslot_status_error
-        })
-    };
+    // function InsertCoin(){
+    //     var data = {
+    //         'csrfmiddlewaretoken': token,
+    //         'ip': ip_add,
+    //         'mac': mac_add
+    //     }
+    //     $('.btn-insert-coin').css('opacity', '0.5').attr('disabled', 'disabled');
+    //     $.ajax({
+    //         method: 'POST',
+    //         url: '/app/slot',
+    //         data: data,
+    //         success: coinslot_status_success,
+    //         error: coinslot_status_error
+    //     })
+    // };
 
     var btn_gen_voucher = document.getElementById("gen_voucher");
 
@@ -204,161 +203,114 @@ $(function(){
             btn_pause_resume.onclick = PauseResume;
         }
     }
-    
-    function PauseResume(){
-        var action = $('.btn-pause-resume').attr('data-action')
 
-        if (action == 'pause' && secs < (pause_resume_enable_time * 1000)){
-            show_notification('warning', 'fas fa-exclamation-triangle', 'Cannot pause! You need at least ' + time_formatter(pause_resume_enable_time * 1000) + 'remaining time.')
+    // var retry_count = 2;
+    // var q;
 
-        } else {
+    // function coinslot_status_success(response)  {
+    //     response_code = response['code']
+    //     response_desc = response['description']
 
-            var data = {
-                'csrfmiddlewaretoken': token,
-                'ip': ip_add,
-                'mac': mac_add,
-                'action': action
-            }
+    //     if (response_code == 600){
+    //         show_notification('error', 'fas fa-exclamation-triangle', '<strong>' + response_desc + '</strong>')
+    //         setTimeout(function(){
+    //             $('.btn-insert-coin').css('opacity', '1').removeAttr('disabled');
+    //         }, retry_count * 1000)
 
-            $.ajax({
-                method: 'GET',
-                url: '/app/pause',
-                data: data,
-                error: coinslot_status_error,
-                beforeSend: function(){
-                    $('#conn_stat').text('Processing..')
-                    $('.btn-pause-resume').css('opacity', '0.5').attr('disabled', 'disabled')
-                },
-                complete: function(){
-                    $('.btn-pause-resume').css('opacity', '1').removeAttr('disabled');
-                },
-                success: function(response){
-                   if (response['code'] = 200){
-                        x = response['description']
-                        if (x == 'Paused'){
-                            myTimer.pause()
-                        }else if (x == 'Connected'){
-                            if (conn_status === 'Paused'){
-                                myTimer.start(seconds_left)
-                            }else{
-                                myTimer.start()
-                            }
-                        }   
-                   }else{
-                        show_notification('error', 'fas fa-exclamation-triangle', response['description'])
-                   }
-                }
-            })
-        }
-    };
+    //         retry_count += 1
 
-    var retry_count = 2;
-    var q;
+    //     }else if(response_code == 200){
+    //         show_notification('info', 'fas fa-coins','<strong>Insert coin(s).</strong>');
+    //         $('.slot_countdown').css('width', '100%');
+    //         var connection_status = $('#conn_stat').html()
+    //         var data = {
+    //             'csrfmiddlewaretoken': token,
+    //             'ip': ip_add,
+    //             'mac': mac_add
+    //             }
 
-    function coinslot_status_success(response)  {
-        response_code = response['code']
-        response_desc = response['description']
+    //         countdown();
 
-        if (response_code == 600){
-            show_notification('error', 'fas fa-exclamation-triangle', '<strong>' + response_desc + '</strong>')
-            setTimeout(function(){
-                $('.btn-insert-coin').css('opacity', '1').removeAttr('disabled');
-            }, retry_count * 1000)
+    //         q = setInterval(function(){
+    //             $.ajax({
+    //                 method: 'GET',
+    //                 url: '/app/commit',
+    //                 data: data,
+    //                 success: fetch_queue_info
+    //             })
 
-            retry_count += 1
+    //             function fetch_queue_info(response){
+    //                 if (response['Status'] == 'Available'){
+    //                     clearInterval(q);
+    //                     $('#conn_stat').html(connection_status).removeClass('blinking');
+    //                     show_notification('error', 'fas fa-stopwatch', '<strong>Slot timeout.</strong>');
+    //                     setTimeout(function(){
+    //                                 $('.btn-insert-coin').css('opacity', '1').removeAttr('disabled');
+    //                                 $('.btn-pause-resume').removeAttr('disabled');
+    //                         }, 2000)
+    //                 }
 
-        }else if(response_code == 200){
-            show_notification('info', 'fas fa-coins','<strong>Insert coin(s).</strong>');
-            $('.slot_countdown').css('width', '100%');
-            var connection_status = $('#conn_stat').html()
-            var data = {
-                'csrfmiddlewaretoken': token,
-                'ip': ip_add,
-                'mac': mac_add
-                }
+    //                 if (response['Total_Coins'] > total_coins){
+    //                     countdown();
+    //                     total_coins = response['Total_Coins'];
 
-            countdown();
+    //                     total_time = new Date(null);
+    //                     total_time.setSeconds(response['Total_Time']);
+    //                     total_time_val = total_time.getTime();
 
-            q = setInterval(function(){
-                $.ajax({
-                    method: 'GET',
-                    url: '/app/commit',
-                    data: data,
-                    success: fetch_queue_info
-                })
+    //                     $('.btn-done').removeClass('btn-outline-default').addClass('btn-outline-success');
+    //                     $('.btn-done').html('<span class="fas fa-paper-plane">\
+    //                                         </span><b> Surf the Net!</b><span class="badge badge-pill badge-warning ml-1 p-1">\
+    //                                         <strong>P ' + total_coins + '</strong></span>');
+    //                     $('.btn-done').removeAttr('disabled');
+    //                     $('.lbl_coins_inserted').text('P ' + total_coins);
+    //                     msg = 'Total of <strong>P' + total_coins + '</strong> is loaded. <strong>(+' + time_formatter(total_time_val) + ')</strong>';
+    //                     show_notification('info', 'fa fas-coins', msg);
+    //                     coins_audio.play();
 
-                function fetch_queue_info(response){
-                    if (response['Status'] == 'Available'){
-                        clearInterval(q);
-                        $('#conn_stat').html(connection_status).removeClass('blinking');
-                        show_notification('error', 'fas fa-stopwatch', '<strong>Slot timeout.</strong>');
-                        setTimeout(function(){
-                                    $('.btn-insert-coin').css('opacity', '1').removeAttr('disabled');
-                                    $('.btn-pause-resume').removeAttr('disabled');
-                            }, 2000)
-                    }
+    //                     var vcode = document.getElementById('vcode')
 
-                    if (response['Total_Coins'] > total_coins){
-                        countdown();
-                        total_coins = response['Total_Coins'];
+    //                     if (voucher_flg==1){
+    //                         if(vcode==null){
+    //                             $('#divInsertCoin').append('<div class="row" id="vcode"> <div class="col text-center">  \
+    //                                             <button type="button" class="animated fadeIn btn btn-md btn-rounded btn-warning" data-toggle="modal" data-target="#voucher-modal"> \
+    //                                             <span class="fas fa-barcode"></span> Get Voucher Code </button> </div> </div>')
+    //                         }
+    //                     }
+    //                 }
+    //             }
 
-                        total_time = new Date(null);
-                        total_time.setSeconds(response['Total_Time']);
-                        total_time_val = total_time.getTime();
+    //         }, 1000 )
 
-                        $('.btn-done').removeClass('btn-outline-default').addClass('btn-outline-success');
-                        $('.btn-done').html('<span class="fas fa-paper-plane">\
-                                            </span><b> Surf the Net!</b><span class="badge badge-pill badge-warning ml-1 p-1">\
-                                            <strong>P ' + total_coins + '</strong></span>');
-                        $('.btn-done').removeAttr('disabled');
-                        $('.lbl_coins_inserted').text('P ' + total_coins);
-                        msg = 'Total of <strong>P' + total_coins + '</strong> is loaded. <strong>(+' + time_formatter(total_time_val) + ')</strong>';
-                        show_notification('info', 'fa fas-coins', msg);
-                        coins_audio.play();
+    //         retry_count = 2;
 
-                        var vcode = document.getElementById('vcode')
+    //     }else{
+    //         show_notification('error','fas fa-exclamation-triangle', response_desc)
+    //         setTimeout(function(){
+    //                     $('.btn-insert-coin').css('opacity', '1').removeAttr('disabled');
+    //                     $('.btn-pause-resume').removeAttr('disabled');
 
-                        if (voucher_flg==1){
-                            if(vcode==null){
-                                $('#divInsertCoin').append('<div class="row" id="vcode"> <div class="col text-center">  \
-                                                <button type="button" class="animated fadeIn btn btn-md btn-rounded btn-warning" data-toggle="modal" data-target="#voucher-modal"> \
-                                                <span class="fas fa-barcode"></span> Get Voucher Code </button> </div> </div>')
-                            }
-                        }
-                    }
-                }
+    //                     $('.slot_countdown').stop();
+    //                     $('.slot_countdown').css('width', '0%');
+    //             }, 2000)
+    //     }
+    // }
 
-            }, 1000 )
-
-            retry_count = 2;
-
-        }else{
-            show_notification('error','fas fa-exclamation-triangle', response_desc)
-            setTimeout(function(){
-                        $('.btn-insert-coin').css('opacity', '1').removeAttr('disabled');
-                        $('.btn-pause-resume').removeAttr('disabled');
-
-                        $('.slot_countdown').stop();
-                        $('.slot_countdown').css('width', '0%');
-                }, 2000)
-        }
-    }
-
-    function countdown(){
-        $('#conn_stat').html('Insert coins..').addClass('blinking')
-        $('.slot_countdown').stop();
-        $('.slot_countdown').css('width', '100%');
-        $('.slot_countdown').animate({'width': '0%'}, (slot_timeout-2) * 1000);
-        $('.btn-pause-resume').attr('disabled', 'disabled');
-    }
+    // function countdown(){
+    //     $('#conn_stat').html('Insert coins..').addClass('blinking')
+    //     $('.slot_countdown').stop();
+    //     $('.slot_countdown').css('width', '100%');
+    //     $('.slot_countdown').animate({'width': '0%'}, (slot_timeout-2) * 1000);
+    //     $('.btn-pause-resume').attr('disabled', 'disabled');
+    // }
 
     // Error function if for some reason, unable to connect to the main server
-    function coinslot_status_error(jqXHR, textStatus, errorThrown){
-        show_notification('error', 'fas fa-exclamation-triangle','<strong>Unable to connect. Please check connection or <a href="/app/portal">resfresh</a> this page.</strong>')
-        console.log(jqXHR)
-        console.log(textStatus)
-        console.log(errorThrown)
-    }
+    // function coinslot_status_error(jqXHR, textStatus, errorThrown){
+    //     show_notification('error', 'fas fa-exclamation-triangle','<strong>Unable to connect. Please check connection or <a href="/app/portal">resfresh</a> this page.</strong>')
+    //     console.log(jqXHR)
+    //     console.log(textStatus)
+    //     console.log(errorThrown)
+    // }
 
     // PNotify setup
     PNotify.prototype.options.styling = "bootstrap3";
@@ -384,7 +336,8 @@ $(function(){
 
     //Set initial time left
     var init_time = time_formatter(seconds_left * 1000)
-    $('.time_holder').html(init_time)
+    // var expire_time = new Date(Date.now() + (seconds_left * 1000))
+    $('.remaining-time').html(init_time)
 
     if (conn_status === 'Paused'){
         var init_status = 'paused';
@@ -395,9 +348,11 @@ $(function(){
     var myTimer = new Timer({
         tick    : 1,
         ontick  : function(s) {
-            secs = s
             var time = time_formatter(s);
-            $('.time_holder').html(time);
+            $('.remaining-time').html(time);
+            t = 440 - (440 * (s / (total_time * 1000)));
+
+            $('circle').animate({'stroke-dashoffset': t}, 1000);
         },
         onstart : function() {
             if (init_status === 'paused'){
@@ -438,16 +393,6 @@ $(function(){
         myTimer.start(seconds_left)
     }
 
-    //Plural Function
-    function pluralize(number, hand){
-        if (number == 1){
-            return number + " " + hand + " "
-        }
-        else if (number > 1){
-            return number + " " + hand + "s "
-        } return ''
-    }
-
     //Time formatter
     function time_formatter(mins){
         var days = Math.floor(mins / (1000 * 60 * 60 * 24));
@@ -455,10 +400,10 @@ $(function(){
         var minutes = Math.floor((mins % (1000 * 60 * 60)) / (1000 * 60));
         var seconds = Math.floor((mins % (1000 * 60)) / 1000);
 
-        str_time = pluralize(days, 'day')
-        str_time += pluralize(hours, 'hr')
-        str_time += pluralize(minutes, 'min')
-        str_time += pluralize(seconds, 'sec')
+        str_time = days > 0 ? days + 'd ' : '' 
+        str_time += hours > 0 ? hours + 'h ' : ''
+        str_time += minutes > 0 ? minutes + 'm ' : ''
+        str_time += seconds > 0 ? seconds + 's' : ''
         
         return str_time
     }

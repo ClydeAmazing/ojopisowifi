@@ -40,7 +40,7 @@ class Singleton(admin.ModelAdmin):
 class ClientsAdmin(admin.ModelAdmin):
     form = forms.ClientsForm
     list_display = ('IP_Address', 'MAC_Address', 'Device_Name', 'Connection_Status', 'Time_Left', 'running_time')
-    readonly_fields = ('IP_Address', 'MAC_Address', 'Expire_On', 'Notification_ID', 'Notified_Flag', 'Date_Created', 'FAS_Session')
+    readonly_fields = ('IP_Address', 'MAC_Address', 'Expire_On', 'Connected_On', 'Notification_ID', 'Notified_Flag', 'Date_Created', 'FAS_Session')
     actions = ['Connect', 'Disconnect', 'Pause', 'Whitelist']
 
     def changelist_view(self, request, extra_context=None):

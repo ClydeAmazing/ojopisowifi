@@ -17,7 +17,7 @@
             <link rel="stylesheet" href="/static/vendors/bootstrap-4.1.1/dist/css/bootstrap.min.css">
 
             <!--Material Design Bootstrap-->
-            <link rel="stylesheet" href="/static/vendors/mdb-free_4.5.12/css/mdb.min.css" >
+            <!-- <link rel="stylesheet" href="/static/vendors/mdb-free_4.5.12/css/mdb.min.css" > -->
 
              <!--Fontawesome CSS-->
             <!--<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">-->
@@ -33,10 +33,109 @@
             <!--Animate CSS-->
             <link rel="stylesheet" href="/static/build/css/animate.css">
         {% endblock stylesheets %}
+        <style>
+            body{
+                background-color: #e3edf7; 
+                font-family: Roboto,sans-serif;
+            }
+
+            body, h1, h2, h3, h4, h5, h6 {
+                font-weight: 300;
+            }
+
+            .btn{
+                font-size: .7rem;
+                padding: .7rem 1.6rem;
+                white-space: normal;
+            }
+
+            .btn-pause-resume, .btn-extend{
+                background: #e3edf7;
+                box-shadow: 6px 6px 10px -1px rgba(0,0,0,0.15),
+                            -6px -6px 10px -1px rgba(255,255,255,0.7)
+            }
+
+            .btn-insert-coin{
+                width: 150px;
+                height: 150px;
+                background-color: #e3edf7;
+                border: 10px #b72b6f solid;
+                border-radius: 50%;
+                box-shadow: 6px 6px 10px -1px rgba(0,0,0,0.15),
+                            -6px -6px 10px -1px rgba(255,255,255,0.7)
+            }
+
+            .btn-insert-coin i{
+                font-size: 4rem;
+                /* background: linear-gradient(to right, #185ef0, #30CFD0); */
+                background: linear-gradient(to right, #f24040, #7212A8);
+                background-clip: border-box;
+                -webkit-background-clip: text;
+                background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+
+            .btn-done{
+                box-shadow: inset -3px -3px 6px #ffffff, inset 3px 3px 6px #d1d9e6;
+            }
+
+            .timer-progress{
+                width: 160px;
+                height: 160px;
+                position: relative;
+            }
+
+            .timer-progress .outer{
+                width: 160px;
+                height: 160px;
+                border-radius: 50%;
+                padding: 20px;
+                box-shadow: 6px 6px 10px -1px rgba(0,0,0,0.15),
+                            -6px -6px 10px -1px rgba(255,255,255,0.7)
+            }
+
+            .timer-progress .inner{
+                width: 120px;
+                height: 120px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: inset 4px 4px 6px -1px rgba(0,0,0,0.2),
+                            inset -4px -4px 6px -1px rgba(255,255,255,0.7),
+                            -0.5px -0.5px 0px rgba(255,255,255,1),
+                            0.5px 0.5px 0px rgba(0,0,0,0.15),
+                            0px 12px 10px -10px rgba(0,0,0,0.05)
+            }
+
+            .timer-progress .remaining-time {
+                font-weight: 600;
+                color: #555;
+            }
+
+            svg {
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+
+            svg circle {
+                fill: none;
+                stroke: url(#GradientColor);
+                stroke-width: 20px;
+                stroke-dasharray: 440;
+                stroke-dashoffset: 0;
+            }
+
+            .fix-bottom{
+                position: fixed;
+                bottom: 10px;
+            }
+        </style>
 
     {% endblock head %}
 </head>
-<body class="bg-dark">
+<body>
 {% block body %}
     {% block top_navigation %}
     {% endblock top_navigation %}
