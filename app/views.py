@@ -72,21 +72,6 @@ def api_response(code):
 
     return  response
 
-def getDeviceInfo(request):
-        info = dict()
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
-        else:
-            ip = request.META.get('REMOTE_ADDR')
-
-        mac = getmac.get_mac_address(ip=ip)
-        
-        info['ip'] = ip
-        info['mac'] = mac
-        return info
-
 def getClientInfo(ip, mac, fas):
     info = dict()
 
@@ -103,10 +88,16 @@ def getClientInfo(ip, mac, fas):
 
         default_values = {
             'IP_Address': ip,
-            'FAS_Session': fas
+            'FAS_Session': fas,
+            'Settings': models.Settings.objects.get(pk=1)
         }
 
+        print(mac)
+
         client, created = models.Clients.objects.get_or_create(MAC_Address=mac, defaults=default_values)
+
+        print(client)
+
         if not created:
             updated = False
             if client.IP_Address != ip:
@@ -119,14 +110,15 @@ def getClientInfo(ip, mac, fas):
                 client.save()
 
         try:
-            coin_queue = client.coin_queue.get()
+            coin_queue = models.CoinQueue.objects.get(Client=client)
             total_coins = coin_queue.Total_Coins
-        except ObjectDoesNotExist:
+
+        except models.CoinQueue.DoesNotExist:
             total_coins = 0
 
         try:
-            vouchers = models.Vouchers.objects.filter(Voucher_client=mac, Voucher_status='Not Used')
-        except ObjectDoesNotExist:
+            vouchers = models.Vouchers.objects.filter(Voucher_client=client, Voucher_status='Not Used')
+        except models.Vouchers.DoesNotExist:
             vouchers = None
 
         status = client.Connection_Status
@@ -142,22 +134,7 @@ def getClientInfo(ip, mac, fas):
 
         notif_id = client.Notification_ID
 
-        # Coinslot status
-        try:
-            coinslot = models.CoinSlot.objects.get(Client=client)
-            time_diff = timedelta.total_seconds(timezone.now()-coinslot.Last_Updated)
-
-            slot_timeout = client.Settings.Slot_Timeout
-            if timedelta(seconds=time_diff).total_seconds() < slot_timeout:
-                insert_coin = 100 - ((timedelta(seconds=time_diff).total_seconds()/slot_timeout) * 100)
-                insert_coin_timeout = slot_timeout - timedelta(seconds=time_diff).total_seconds()
-            else:
-                insert_coin = 0
-                insert_coin_timeout = 0
-
-        except models.CoinSlot.DoesNotExist:
-            insert_coin = 0
-            insert_coin_timeout = 0
+        is_inserting, _, slot_remaining_time = client.is_inserting_coin()
 
     info['ip'] = ip
     info['mac'] = mac
@@ -168,8 +145,8 @@ def getClientInfo(ip, mac, fas):
     info['total_coins'] = total_coins
     info['vouchers'] = vouchers
     info['appNotification_ID'] = notif_id
-    info['insert_coin'] = insert_coin
-    info['insert_coin_timeout'] = insert_coin_timeout
+    info['insert_coin'] = is_inserting
+    info['slot_remaining_time'] = slot_remaining_time
 
     return info
 
@@ -203,39 +180,6 @@ def getSettings():
 
     return info
 
-
-class Portal_(View):
-    template_name = 'captive.html'
-
-    def get(self, request, template_name=template_name):
-        device_info = getDeviceInfo(request)
-        ip = device_info['ip']
-        mac = device_info['mac']
-        info = getClientInfo(ip, mac)
-        settings = getSettings()
-
-        context = {**settings, **info}
-        return render(request, template_name, context=context)
-
-    def post(self, request):
-        data = json.loads(request.body.decode("utf-8"))
-
-        action = data.get('action')
-        mac = data.get('mac')
-
-        resp = api_response(700)
-
-        if action == 'update_notif_id':
-            notif_id = data.get('notifId', None)
-            client = models.Clients.objects.get(MAC_Address=mac)
-            if client.Notification_ID != notif_id and notif_id:
-                client.Notification_ID = notif_id
-                client.save()
-                resp = api_response(200)
-
-        return JsonResponse(resp, safe=False)
-
-
 def generatePayload(fas):
     # decrypted = b64decode(b64decode(fas.encode('utf-8'))).decode('utf-8')
     decrypted =b64decode(fas.encode('utf-8')).decode('utf-8')
@@ -246,13 +190,6 @@ def generatePayload(fas):
             parsed_data = data.split('=')
             payload[parsed_data[0]] = None if parsed_data[1] == '(null)' else parsed_data[1]
     return payload
-
-def Stream(request):
-    def event_stream():
-        while True:
-            time.sleep(1)
-            yield 'data: The server time is: %s\n\n' % datetime.datetime.now()
-    return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
 
 class Portal(View):
     template_name = 'captive.html'
@@ -311,7 +248,6 @@ class Portal(View):
                 action = request.POST['pause_resume']
                 try:
                     client = models.Clients.objects.get(MAC_Address=mac)
-                    settings = getSettings()
                     pause_resume_flg = settings['pause_resume_flg']
 
                     if pause_resume_flg:
@@ -321,7 +257,7 @@ class Portal(View):
 
                             if client_time > pause_resume_enable_time:
                                 client.Pause()
-                                messages.success(request, '<strong>Internet connection paused.</strong> Resume when you\'re ready.')
+                                messages.success(request, 'Internet connection paused. Resume when you are ready.')
 
                             else:
                                 # TODO: Provide a proper message
@@ -329,95 +265,65 @@ class Portal(View):
 
                         elif action == 'resume':
                             client.Connect()
-                            messages.success(request, '<strong>Internet connection resumed.</strong> Enjoy browsing the internet.')
+                            messages.success(request, 'Internet connection resumed. Enjoy browsing the internet.')
                         else:
-                            # Invalid action
                             resp = api_response(700)
                             messages.error(request, resp['description'])
                     else:
-                        # Invalid action
                         resp = api_response(700)
                         messages.error(request, resp['description'])
 
                 except models.Clients.DoesNotExist:
                     # Maybe redirect to Opennds gateway
 
-                    # Client not found error
                     resp = api_response(800)
                     messages.error(request, resp['description'])
 
-            if 'insert_coin' in request.POST:
+            if 'insert_coin' in request.POST or 'extend' in request.POST:
                 try:
-                    client = models.Clients.objects.get(MAC_Address = mac)
-                    slot_timeout = client.Settings.Slot_Timeout
+                    client = models.Clients.objects.get(MAC_Address=mac)
                     
                     # TODO: Make this coinslot assignment dynamic
                     slot_info = models.CoinSlot.objects.get(id=1)
 
                     if slot_info.Client == client:
-                        slot_info.Last_Updated = timezone.now()
                         slot_info.save()
 
                     else:
                         time_diff = timedelta.total_seconds(timezone.now()-slot_info.Last_Updated)
-                        if timedelta(seconds=time_diff).total_seconds() > slot_timeout:
+                        if timedelta(seconds=time_diff).total_seconds() > settings['slot_timeout']:
                             slot_info.Client = client
-                            slot_info.Last_Updated = timezone.now()
                             slot_info.save()
 
                         else:
                             resp = api_response(600)
                             messages.error(request, resp['description'])
 
-                    messages.success(request, 'Insert coin', extra_tags='insert_coin')
+                    coin_queue, created = models.CoinQueue.objects.get_or_create(Client=client)
+                    if not created:
+                        coin_queue.save()
+
+                    messages.success(request, 'Insert coin')
 
                 except models.Clients.DoesNotExist:
                     resp = api_response(500)
+                    messages.error(request, resp['description'])
+
+            if 'connect' in request.POST:
+                try:
+                    client = models.Clients.objects.get(MAC_Address=mac)
+                    coin_queue = models.CoinQueue.objects.get(Client=client)
+                    total_coins = coin_queue.Total_Coins
+                    coin_queue.Claim_Queue()
+
+                    messages.success(request, f'P{str(total_coins)} credited successfully. Enjoy Browsing')
+                except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):
+                    resp = api_response(700)
                     messages.error(request, resp['description'])
         else:
             return redirect(settings['opennds_gateway'])
 
         return redirect('app:portal')
-
-class Slot(View):
-
-    def post(self, request):
-        if request.is_ajax():
-            mac = request.POST.get('mac')
-
-            try:
-                settings = models.Settings.objects.get(pk=1)
-                timeout = settings.Slot_Timeout
-                client = models.Clients.objects.get(MAC_Address=mac)
-
-            except ObjectDoesNotExist as e:
-                resp = api_response(500)
-
-            else:
-                try:
-                    slot_info = models.CoinSlot.objects.get(pk=1, Client=mac)
-                    slot_info.Last_Updated = timezone.now()
-                    slot_info.save()
-
-                    # subprocess.run(['gpio', '-1', 'write', str(settings.Light_Pin), '1'])
-                    resp = api_response(200)
-
-                except ObjectDoesNotExist:
-                    slot_info = models.CoinSlot.objects.get(pk=1)
-                    time_diff = timedelta.total_seconds(timezone.now()-slot_info.Last_Updated)
-                    if timedelta(seconds=time_diff).total_seconds() > timeout:
-                        slot_info.Client = mac
-                        slot_info.Last_Updated = timezone.now()
-                        slot_info.save()
-
-                        # subprocess.run(['gpio', '-1', 'write', str(settings.Light_Pin), '1'])
-                        resp = api_response(200)
-                    else:
-                        resp = api_response(600)
-                
-            return JsonResponse(resp, safe=False)
-        else:
-            raise Http404("Page not found")
 
 @method_decorator(csrf_exempt, name='dispatch')
 class Pay(View):
@@ -498,114 +404,49 @@ class Commit(View):
     def get(self, request):
         if not request.is_ajax():
             raise Http404("Page not found")
-
         else:
             data = dict()
-            client = request.GET.get('mac')
-            settings = models.Settings.objects.get(pk=1)
-            timeout = settings.Slot_Timeout
+            mac = request.session.get('mac_address')
+            if mac:
+                try:
+                    client = models.Clients.objects.get(MAC_Address=mac)
+                    try:
+                        is_inserting, _, slot_remaining_time = client.is_inserting_coin()
 
-            slot = models.CoinSlot.objects.get(pk=1, Client=client)
+                        if is_inserting:
+                            data['Status'] = 'Not Available'
+                            data['Timeout'] = slot_remaining_time
 
-            time_diff = timedelta.total_seconds(timezone.now()-slot.Last_Updated)
-            if timedelta(seconds=time_diff).total_seconds() > timeout:
-                data['Status'] = 'Available'
-                # subprocess.run(['gpio', '-1', 'write', str(settings.Light_Pin), '0'])
+                        else:
+                            data['Status'] = 'Available'
+                            data['Timeout'] = 0
+
+                        queue = models.CoinQueue.objects.get(Client=client)
+
+                        data['Total_Coins'] = queue.Total_Coins
+                        data['Total_Time'] = int(timedelta.total_seconds(queue.Total_Time))
+
+                    except models.CoinQueue.DoesNotExist:
+                        data['Total_Coins'] = 0
+                        data['Total_Time'] = 0
+
+                except (models.Clients.DoesNotExist, models.CoinSlot.DoesNotExist):
+                    data['Status'] = 'Error'
             else:
-                data['Status'] = 'Not Available'
-
-            try:
-                queue = models.CoinQueue.objects.get(Client=client)
-                data['Total_Coins'] = queue.Total_Coins
-                data['Total_Time'] = int(timedelta.total_seconds(queue.Total_Time))
-
-            except ObjectDoesNotExist:
-                data['Total_Coins'] = 0
-                data['Total_Time'] = 0
+                data['Status'] = 'Error'
 
             return JsonResponse(data)
 
-class Browse(View):
-
-    def get(self, request):
-        if request.is_ajax():
-            ip = request.GET.get('ip')
-            mac = request.GET.get('mac')
-
-            try:
-                coin_queue = models.CoinQueue.objects.get(Client=mac)
-                addtl_time = coin_queue.Total_Time
-                coin_queue.delete()
-
-                push_notif = models.PushNotifications.objects.get(pk=1)
-                client = models.Clients.objects.get(MAC_Address=mac)
-
-                client.Connect(addtl_time)
-
-                settings = models.Settings.objects.get(pk=1)
-                timeout = settings.Slot_Timeout
-
-                coin_slot = models.CoinSlot.objects.get(pk=1)
-                coin_slot.Last_Updated = coin_slot.Last_Updated - timedelta(seconds=timeout)
-                coin_slot.save()
-
-                # subprocess.run(['gpio', '-1', 'write', str(settings.Light_Pin), '0'])
-
-                resp = api_response(200)
-
-            except ObjectDoesNotExist:
-                resp = api_response(700)    
-
-            return JsonResponse(data=resp)
-        else:
-            raise Http404("Page not found")
-
-class Pause(View):
-    def get(self, request):
-        if request.is_ajax():
-            ip = request.GET.get('ip')
-            mac = request.GET.get('mac')
-            action = request.GET.get('action')
-
-            try:
-                client = models.Clients.objects.get(MAC_Address=mac)
-
-                if action == 'pause':
-                    client.Pause()
-
-                    resp = api_response(200)
-                    resp['description'] = 'Paused'
-                    
-
-                elif action == 'resume':
-                    client.Connect()
-
-                    resp = api_response(200)
-                    resp['description'] = 'Connected'
-                    
-                else:
-                    resp = api_response(700)
-                    
-
-            except ObjectDoesNotExist:
-                resp = api_response(800)
-                
-
-            return JsonResponse(data=resp)
-
-        else:
-            raise Http404("Page not found")
-
 class GenerateVoucher(View):
     def get(self, request):
-        client = request.GET.get("mac")
+        mac_address = request.session.get('mac_address', None)
         data = dict()
-        if not client:
+        if not mac_address:
             data['status'] = 'Error. Invalid Action'
 
         try:
+            client = models.Clients.objects.get(MAC_Address=mac_address)
             queue = models.CoinQueue.objects.get(Client=client)
-            total_coins = queue.Total_Coins
             total_time = queue.Total_Time
             
             voucher = models.Vouchers()
@@ -623,7 +464,7 @@ class GenerateVoucher(View):
             data['voucher_code'] = voucher.Voucher_code
             data['status'] = 'OK'
 
-        except ObjectDoesNotExist:
+        except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):
             data['status'] = 'Error. No coin(s) inserted.'
             
         return JsonResponse(data)
@@ -632,19 +473,18 @@ class Redeem(View):
 
     def post(self, request):
         if request.is_ajax():
-            data = dict()
             voucher_code = request.POST.get('voucher', None)
-            mac = request.POST.get('mac', None)
+            mac_address = request.session.get('mac_address', None)
             try:
                 voucher = models.Vouchers.objects.get(Voucher_code=voucher_code, Voucher_status = 'Not Used')
                 time_value = voucher.Voucher_time_value
 
-                if voucher.Voucher_client != mac:
-                    voucher.Voucher_client = mac
-
                 try:
-                    client = models.Clients.objects.get(MAC_Address=mac)
+                    client = models.Clients.objects.get(MAC_Address=mac_address)
                     client.Connect(time_value)
+
+                    if voucher.Voucher_client != client:
+                        voucher.Voucher_client = client
 
                     voucher.Voucher_status = 'Used'
                     voucher.save()
@@ -658,9 +498,7 @@ class Redeem(View):
 
             except ObjectDoesNotExist:
                 resp = api_response(110)
-
             return JsonResponse(resp)
-
         else:
             raise Http404("Page not found")
 

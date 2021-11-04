@@ -91,6 +91,24 @@ class Clients(models.Model):
             else:
                 return 'Disconnected'
 
+    def is_inserting_coin(self):
+        coinslot = CoinSlot.objects.filter(Client=self).order_by('-Last_Updated').first()
+        slot_timeout = self.Settings.Slot_Timeout
+
+        if coinslot and timedelta.total_seconds(timezone.now()-coinslot.Last_Updated) < slot_timeout :
+            remaining_time = slot_timeout - timedelta.total_seconds(timezone.now()-coinslot.Last_Updated)
+            return True, coinslot, remaining_time
+        else:
+            return False, None, 0
+
+    def insert_coin(self, amount):
+        is_inserting, coinslot, _ = self.is_inserting_coin()
+        if is_inserting:
+            self.coin_queue.Total_Coins += amount
+            self.coin_queue.save()
+            coinslot.save()
+            
+
     def Connect(self, add_time = timedelta(0)):
         total_time = self.Time_Left + add_time
         success_flag = False
@@ -153,7 +171,6 @@ class Whitelist(models.Model):
         name =  self.MAC_Address if not self.Device_Name else self.Device_Name
         return 'Device: ' + name
 
-
 class Ledger(models.Model):
     Date = models.DateTimeField()
     Client = models.CharField(max_length=50)
@@ -171,7 +188,6 @@ class Ledger(models.Model):
     def __str__(self):
         return 'Transaction no: ' + str(self.pk)
 
-
 class CoinSlot(models.Model):
     def generate_code(size=10):
         found = False
@@ -186,19 +202,17 @@ class CoinSlot(models.Model):
         return random_code
 
     Edit = 'Edit'
-    # Client = models.CharField(max_length=17, null=True, blank=True)
-    Client = models.ForeignKey(Clients, on_delete=models.SET_NULL, null=True, blank=True)
-    Last_Updated = models.DateTimeField(null=True, blank=True)
+    Client = models.ForeignKey(Clients, on_delete=models.SET_NULL, null=True, blank=True, related_name='coin_slot')
     Slot_ID = models.CharField(default=generate_code, unique=True, max_length=10, null=False, blank=False)
     Slot_Address = models.CharField(unique=True, max_length=17, null=False, blank=False, default='00:00:00:00:00:00')
     Slot_Desc = models.CharField(max_length=50, null=True, blank=True, verbose_name='Description')
+    Last_Updated = models.DateTimeField(null=True, blank=True, auto_now=True)
 
     class Meta:
         verbose_name = 'Coin Slot'
         verbose_name_plural = 'Coin Slot'
 
     def __str__(self):
-
         return 'Slot no: ' + str(self.pk)
 
 class Rates(models.Model):
@@ -214,15 +228,14 @@ class Rates(models.Model):
     def __str__(self):
         return 'Rate: ' + str(self.Denom)
 
-
 class CoinQueue(models.Model):
-    # Client = models.CharField(max_length=17, null=True, blank=True)
-    Client = models.ForeignKey(Clients, on_delete=models.CASCADE, related_name='coin_queue')
+    Client = models.OneToOneField(Clients, on_delete=models.CASCADE, primary_key=True, related_name='coin_queue')
     Total_Coins = models.IntegerField(null=True, blank=True, default=0)
+    Last_Updated = models.DateTimeField(auto_now=True)
 
     @property
     def Total_Time(self):
-        settings = Settings.objects.get(pk=1)
+        settings = self.Client.Settings
         rate_type = settings.Rate_Type
         base_value = settings.Base_Value
         total_coins = self.Total_Coins
@@ -241,15 +254,18 @@ class CoinQueue(models.Model):
         
         return total_time
 
+    def Claim_Queue(self):
+        if self.Total_Coins > 0:
+            self.Client.Connect(self.Total_Time)
+            self.Total_Coins = 0
+            self.save()
+
     class Meta:
         verbose_name = 'Coin Queue'
         verbose_name_plural = 'Coin Queue'
 
     def __str__(self):
-        if self.Client:
-            return 'Coin queue for: ' + self.Client
-        else:
-            return 'Record'
+        return 'Coin queue for: ' + self.Client.MAC_Address
 
 class Network(models.Model):
     Edit = "Edit"
@@ -265,7 +281,6 @@ class Network(models.Model):
 
     def __str__(self):
         return 'Network Settings'
-
 
 class Vouchers(models.Model):
     status_choices = (
@@ -288,7 +303,8 @@ class Vouchers(models.Model):
 
     Voucher_code = models.CharField(default=generate_code, max_length=20, null=False, blank=False, unique=True)
     Voucher_status = models.CharField(verbose_name='Status', max_length=25, choices=status_choices, default='Not Used', null=False, blank=False)
-    Voucher_client = models.CharField(verbose_name='Client', max_length=50, null=True, blank=True, help_text="Voucher code user. * Optional")
+    # Voucher_client = models.CharField(verbose_name='Client', max_length=50, null=True, blank=True, help_text="Voucher code user. * Optional")
+    Voucher_client = models.ForeignKey(Clients, on_delete=models.CASCADE, null=True, blank=True, verbose_name='Client', help_text='Voucher code user. * Optional', related_name='voucher_code')
     Voucher_create_date_time = models.DateTimeField(verbose_name='Created Date/Time', auto_now_add=True)
     Voucher_used_date_time = models.DateTimeField(verbose_name='Used Date/Time', null=True, blank=True)
     Voucher_time_value = models.DurationField(verbose_name='Time Value', default=timezone.timedelta(minutes=0), null=True, blank=True, help_text='Time value in minutes.')
@@ -308,7 +324,6 @@ class Vouchers(models.Model):
 
     def __str__(self):
         return self.Voucher_code
-
 
 class Device(models.Model):
     Device_ID = models.CharField(max_length=255, null=True, blank=True)

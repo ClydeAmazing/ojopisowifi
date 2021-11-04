@@ -30,6 +30,10 @@
     cursor: pointer;
 }
 
+.btn-insert-coin:disabled{
+  opacity: 1 !important;
+}
+
 .btn-rounded{
     border-radius: 20px !important;
 }
@@ -74,4 +78,26 @@
     -webkit-transform: rotate(360deg);
   }
 }
-    
+
+.pulsating {
+  box-shadow: 0 0 0 0 rgb(236, 140, 140);
+	transform: scale(1);
+	animation: pulse-black 2s infinite;
+}
+
+@keyframes pulse-black {
+	0% {
+		transform: scale(0.95);
+		box-shadow: 0 0 0 0 rgb(236, 140, 140);
+	}
+
+	70% {
+		transform: scale(1);
+		box-shadow: 0 0 0 20px rgba(0, 0, 0, 0);
+	}
+
+	100% {
+		transform: scale(0.95);
+		box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+	}
+}

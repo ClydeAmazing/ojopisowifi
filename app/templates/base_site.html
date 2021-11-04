@@ -16,13 +16,8 @@
             <!-- Bootstrap CSS -->
             <link rel="stylesheet" href="/static/vendors/bootstrap-4.1.1/dist/css/bootstrap.min.css">
 
-            <!--Material Design Bootstrap-->
-            <!-- <link rel="stylesheet" href="/static/vendors/mdb-free_4.5.12/css/mdb.min.css" > -->
-
              <!--Fontawesome CSS-->
-            <!--<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">-->
             <link rel="stylesheet" href="/static/vendors/fontawesome-free-5.4.1-web/css/all.css">
-            <!--<link rel="stylesheet" href="/static/vendors/fontawesome-free-5.1.0-web/css/brands.css">-->
 
             <!-- Custom CSS -->
             <link rel="stylesheet" href="/static/build/css/custom.css">
@@ -33,6 +28,7 @@
             <!--Animate CSS-->
             <link rel="stylesheet" href="/static/build/css/animate.css">
         {% endblock stylesheets %}
+        
         <style>
             body{
                 background-color: #e3edf7; 
@@ -61,8 +57,6 @@
                 background-color: #e3edf7;
                 border: 10px #b72b6f solid;
                 border-radius: 50%;
-                box-shadow: 6px 6px 10px -1px rgba(0,0,0,0.15),
-                            -6px -6px 10px -1px rgba(255,255,255,0.7)
             }
 
             .btn-insert-coin i{
@@ -75,8 +69,10 @@
                 -webkit-text-fill-color: transparent;
             }
 
-            .btn-done{
-                box-shadow: inset -3px -3px 6px #ffffff, inset 3px 3px 6px #d1d9e6;
+            .neu-shadow{
+                /* box-shadow: inset -3px -3px 6px #ffffff, inset 3px 3px 6px #d1d9e6; */
+                box-shadow: 6px 6px 10px -1px rgba(0,0,0,0.15),
+                            -6px -6px 10px -1px rgba(255,255,255,0.7)
             }
 
             .timer-progress{
