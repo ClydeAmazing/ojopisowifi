@@ -267,11 +267,10 @@ admin.site.register(models.Device, DeviceAdmin)
 admin.site.register(models.Vouchers, VouchersAdmin)
 admin.site.register(models.PushNotifications, PushNotificationsAdmin)
 
+# def admin_name():
+#     settings = models.Settings.objects.get(pk=1)
+#     return settings.Hotspot_Name
 
-def admin_name():
-    settings = models.Settings.objects.get(pk=1)
-    return settings.Hotspot_Name
-
-admin.AdminSite.site_header = admin_name()
-admin.AdminSite.site_title = admin_name()
+# admin.AdminSite.site_header = admin_name()
+# admin.AdminSite.site_title = admin_name()
 admin.AdminSite.index_template = 'admin/index2.html'

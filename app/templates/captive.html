@@ -11,7 +11,7 @@
         <div class="container">
             <div class="row justify-content-center">
                 <div class="col col-sm-6 col-md-4 p-0" style="height: 100vh">
-                    <div class="row">
+                    <div class="row px-5">
                         <div class="col">
                             <div class="progress bg-transparent" style="height: 7px; background-color: None;">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger slot_countdown" role="progressbar" style="width: 0%" aria-valuenow="10%" aria-valuemin="0" aria-valuemax="100"></div>
@@ -64,15 +64,21 @@
                                     <!-- Extend/Pause Buttons -->
 
                                     <div class="row justify-content-sm-center p-2">
-                                        <div class="col-6">
+                                        <div class="col-6 d-flex align-items-stretch">
                                             <button type="submit" name="extend" class="mb-2 btn btn-block btn-md btn-rounded text-success btn-extend">
-                                                <span class="fas fa-clock"></span> Extend
+                                                {% if total_coins > 0 %}
+                                                    <span class="badge badge-pill badge-warning"><strong>₱{{ total_coins }}</strong></span>
+                                                {% else %}
+                                                    <span class="fas fa-clock"></span>
+                                                {% endif %}
+                                                 Extend
                                             </button>
                                         </div>
-                                        {% if pause_resume_flg == 1%}
-                                            <div class="col-6">
+                                        {% if pause_resume_flg %}
+                                            <div class="col-6 d-flex align-items-stretch">
                                                 <button type="submit" name="pause_resume" value="{% if status == 'Paused' %}resume{% elif status == 'Connected' %}pause{% endif %}" id="btn-pause-resume_x" class="mb-2 btn btn-block btn-md btn-rounded {% if status == 'Paused' %}text-info{% elif status == 'Connected' %}text-danger{% endif %} btn-pause-resume">
-                                                    <span class="fas {% if status == 'Paused' %}fa-play{% elif status == 'Connected' %}fa-pause{% endif %}"></span>{% if status == 'Paused' %} Resume{% elif status == 'Connected' %} Pause{% endif %}
+                                                    <span class="fas {% if status == 'Paused' %}fa-play{% elif status == 'Connected' %}fa-pause{% endif %}"></span>
+                                                    {% if status == 'Paused' %} Resume{% elif status == 'Connected' %} Pause{% endif %}
                                                 </button>
                                             </div>
                                         {% endif %}
@@ -101,48 +107,54 @@
                                                 {% else %}
                                                     <span class="fas fa-paper-plane"></span>
                                                     <b>Surf the Net!</b>
-                                                    <span class="badge badge-pill badge-warning"><strong>P {{ total_coins }}</strong></span>
+                                                    <span class="badge badge-pill badge-warning"><strong>₱{{ total_coins }}</strong></span>
                                                 {% endif %} 
                                             </button>
                                         </div>
                                     </div>
 
-                                    <!-- Generate Voucher Button -->
-                                    <!-- <hr> -->
-
-                                    {% if voucher_flg == 1 %}
-                                        <div class="row p-2" id="vcode"> 
+                                    {% if voucher_flg %}
+                                        <div class="row p-2"> 
                                             <div class="col-10 mx-auto text-center">  
-                                                <button type="button" class="btn btn-md btn-block btn-rounded {% if total_coins == 0 %} btn-outline-default {% else %} btn-outline-danger {% endif %} neu-shadow" data-toggle="modal" data-target="#voucher-modal" {% if total_coins == 0 %} disabled {% endif %}>    
+                                                <button 
+                                                    type="submit" 
+                                                    name="generate" 
+                                                    class="btn btn-md btn-block btn-rounded {% if total_coins == 0 %} btn-outline-default {% else %} btn-outline-danger {% endif %} btn-generate neu-shadow" 
+                                                    data-toggle="modal" 
+                                                    data-target="#voucher-modal" {% if total_coins == 0 %} disabled {% endif %}>    
+                                                    
                                                     <span class="fas fa-barcode"></span>
                                                     Generate Voucher
                                                 </button>      
                                             </div>
                                         </div>
-                                        {% if vouchers %}
-                                            <div class="row p-2">
-                                                <div class="col text-center">
-                                                    <small>
-                                                        <a href='#' data-toggle="modal" data-target="#voucher-list-modal">My Vouchers <span class="badge badge-pill badge-success">{{ vouchers|length }}</span></a>
-                                                    </small>
-                                                </div>
-                                            </div>
-                                        {% endif %}
-                                        <div class="row p-2">
-                                            <div class="col text-center">
-                                                <small><a href='#' data-toggle="modal" data-target="#enter-voucher-modal">Redeem Voucher</a></small>
-                                            </div>
-                                        </div>
                                     {% endif %}
 
-                                    <!-- View Rates Button -->
+                                {% endif %}
 
+                                <!-- Voucher Codes Button -->
+                                {% if voucher_flg %}
                                     <div class="row p-2">
                                         <div class="col text-center">
-                                            <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle" data-toggle="modal" data-target="#rates-modal"> View Rates </button>
+                                            <small>
+                                                <a href='#' data-toggle="modal" data-target="#enter-voucher-modal">
+                                                    Voucher Codes
+                                                    {% if vouchers %}
+                                                        <span class="badge badge-pill badge-success">{{ vouchers|length }}</span>
+                                                    {% endif %}
+                                                </a>
+                                            </small>
                                         </div>
                                     </div>
                                 {% endif %}
+
+                                <!-- Wifi Rates Button -->
+
+                                <div class="row p-2">
+                                    <div class="col text-center">
+                                        <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle" data-toggle="modal" data-target="#rates-modal"> Wifi Rates </button>
+                                    </div>
+                                </div>
                             {% else %}
                                 <div class="row p-2">
                                     <div class="col text-center">
@@ -153,7 +165,14 @@
                                 </div>
                             {% endif %}
                         </form>
-
+                        {% if user_details %}
+                            <div class="row p-2 text-center">
+                                <div class="col text-muted">
+                                    <small>IP: {{ ip }}</small><br />
+                                    <small>MAC: {{ mac }}</small>
+                                </div>
+                            </div>
+                        {% endif %}
                         <div class="row p-2 text-center">
                             <div class="col">
                                 <span class="text-muted"><small>Powered by: </small></span>
@@ -183,14 +202,14 @@
                                 {% if rate_type == 'auto' %}
                                     {% for rate in rates %}
                                         <tr>
-                                            <td><strong>P {{ rate.Denom }}</strong></td>
+                                            <td><strong>₱{{ rate.Denom }}</strong></td>
                                             <td><strong>{{ rate.auto_rate|duration }}</strong></td>
                                         </tr>
                                     {% endfor %}
                                 {% else %}
                                     {% for rate in rates %}
                                         <tr>
-                                            <td><strong>P {{ rate.Denom }}</strong></td>
+                                            <td><strong>₱{{ rate.Denom }}</strong></td>
                                             <td><strong>{{ rate.Minutes|duration }}</strong></td>
                                         </tr>
                                     {% endfor %}
@@ -217,87 +236,51 @@
         </div>
         <!-- End of Loader Modal -->
 
-        {% if voucher_flg == 1 %}
+        {% if voucher_flg %}
             <!-- Enter Voucher Modal -->
             <div class="modal fade" id="enter-voucher-modal">
                 <div class="modal-dialog modal-sm">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h6 class="modal-title">Enter Voucher Code</h6>
+                            <h6 class="modal-title">Vouchers</h6>
                             <button type="button" class="close" data-dismiss="modal">&times;</button>
                         </div>
                         <div class="modal-body">
-                            <div class="input-group mb-2">
-                                <input type="text" class="form-control text-center" name="input_voucher_redeem">
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control text-center input-sm" name="input_voucher_redeem" placeholder="Enter code">
                                 <div class="input-group-append">
                                     <button class="input-group-text bg-success text-white" id="btn_voucher_redeem">Redeem</button>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- End Enter Voucher Modal -->
-
-            <!-- Voucher Modal -->
-            <div class="modal fade" id="voucher-modal" data-backdrop="static" data-keyboard="false">
-                <div class="modal-dialog modal-sm">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h6 class="modal-title">Voucher Code</h6>
-                            <button type="button" class="close" id="btn_voucher_close" data-dismiss="modal">&times;</button>
-                        </div>
-                        <div class="modal-body text-center">
-                            <!-- <form class="form-inline"> -->
-                                Amount inserted: <strong class="lbl_coins_inserted">P {{ total_coins }}</strong>
-                            <div class="input-group mb-2">
-                                <input type="text" class="form-control text-center" name="input_voucher" id="input_voucher" readonly>
-                                <div class="input-group-append">
-                                    <button class="input-group-text fa fa-copy" id="btn_copy"></button>
-                                </div>
-                            </div>
-                            <button class="btn btn-success btn-sm" id="gen_voucher">Generate Code</button>
-                            <!-- <button class="btn btn-default btn-sm" id="voucher_done" disabled>Done</button> -->
-                            <!-- </form> -->
-                        </div>
-                        <div class="modal-footer">
-                            <small class="text-muted">Print screen this page to save a backup of your voucher code.</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- End Voucher Modal -->
-            
-            <!-- Voucher List Modal -->
-            <div class="modal fade" id="voucher-list-modal">
-                <div class="modal-dialog modal-sm">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h6 class="modal-title">My Voucher Codes</h6>
-                            <button type="button" class="close" id="btn_voucher_close" data-dismiss="modal">&times;</button>
-                        </div>
-                        <div class="modal-body">
-                            <table class="table table-condensed text-center">
-                                <thead>
-                                    <tr><th>Code</th><th>Time</th><th></th></tr>
-                                </thead>
-                                <tbody>
-                                    {% if vouchers %}
+                            {% if vouchers %}
+                                <table class="table table-sm table-borderless table-striped text-center">
+                                    <thead>
+                                        <tr><th>My Codes</th><th>Time</th><th></th></tr>
+                                    </thead>
+                                    <tbody>
                                         {% for voucher in vouchers %}
                                         <tr>
                                             <td class="align-middle"><strong>{{ voucher.Voucher_code }}</strong></td>
                                             <td class="align-middle"><strong>{{ voucher.Voucher_time_value|duration }}</strong></td>
-                                            <td class="align-middle"><button class="btn btn-sm btn-success btn_redeem_voucher" data-voucher="{{ voucher.Voucher_code }}"><strong> Redeem</strong></button></td>
+                                            <td class="align-middle"><button class="btn btn-sm btn-warning p-1 btn_redeem_voucher" data-voucher="{{ voucher.Voucher_code }}"><strong> Use this</strong></button></td>
                                         </tr>
                                         {% endfor %}
-                                    {% endif %}
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                            {% endif %}
+                            <form id="voucher_form" method="POST" action="{% url 'app:redeem' %}">
+                                {% csrf_token %}
+                            </form>
                         </div>
+                        {% if vouchers %}
+                            <div class="modal-footer">
+                                <small>Tip: You can share your voucher codes to others!</small>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
-            <!-- End Voucher List Modal -->
+            <!-- End Enter Voucher Modal -->
         {% endif %}
     {% endblock content %}
 {% endblock body %}
@@ -334,64 +317,63 @@
     <!-- <script type="text/javascript" src="/static/vendors/mdb-free_4.5.12/js/mdb.min.js"></script> -->
 
     {% if push_notif and not whitelisted %}
-    <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async=""></script>
-    <script>
-        window.OneSignal = window.OneSignal || [];
-        OneSignal.push(function() {
-            OneSignal.init({
-                appId: "{{ push_notif.app_id }}",
+        <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async=""></script>
+        <script>
+            window.OneSignal = window.OneSignal || [];
+            OneSignal.push(function() {
+                OneSignal.init({
+                    appId: "{{ push_notif.app_id }}",
+                });
             });
-        });
 
-        {% if appNotification_ID %}
-        var notifId = "{{ appNotification_ID}}";
-        {% else %}
-        var notifId = null;
-        {% endif %}
+            {% if appNotification_ID %}
+            var notifId = "{{ appNotification_ID}}";
+            {% else %}
+            var notifId = null;
+            {% endif %}
 
-        function update_notif_id(userId){
-            const data = {action: 'update_notif_id', notifId: userId, mac: mac_add};
-            fetch('', {
-              method: 'POST',
-              mode: 'same-origin',
-              body: JSON.stringify(data),
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': "application/json",
-                'X-CSRFToken': token
-              }
-            })
-            .then(response => response.text()
-            )
-            .then(data => {
-              console.log('Success:', data);
-            })
-            .catch((error) => {
-              console.error('Error:', error);
-            });
-        }
-
-        OneSignal.push(function() {
-            OneSignal.getUserId(function(userId) {
-                if (!notifId || notifId !== userId && userId){
-                    update_notif_id(userId);
-                    notifId = userId
+            function update_notif_id(userId){
+                const data = {action: 'update_notif_id', notifId: userId, mac: mac_add};
+                fetch('', {
+                method: 'POST',
+                mode: 'same-origin',
+                body: JSON.stringify(data),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRFToken': token
                 }
-            });
-        });
+                })
+                .then(response => response.text()
+                )
+                .then(data => {
+                console.log('Success:', data);
+                })
+                .catch((error) => {
+                console.error('Error:', error);
+                });
+            }
 
-        OneSignal.push(function() {
-            OneSignal.on('subscriptionChange', function (isSubscribed) {
-                OneSignal.push(function() {
-                    OneSignal.getUserId(function(userId) {
-
+            OneSignal.push(function() {
+                OneSignal.getUserId(function(userId) {
+                    if (!notifId || notifId !== userId && userId){
                         update_notif_id(userId);
                         notifId = userId
+                    }
+                });
+            });
+
+            OneSignal.push(function() {
+                OneSignal.on('subscriptionChange', function (isSubscribed) {
+                    OneSignal.push(function() {
+                        OneSignal.getUserId(function(userId) {
+                            update_notif_id(userId);
+                            notifId = userId
+                        });
                     });
                 });
             });
-        });
-    </script>
+        </script>
     {% endif %}
 
     <script>
@@ -401,11 +383,13 @@
                     var icon = '{% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}fas fa-exclamation-triangle{% elif message.level == DEFAULT_MESSAGE_LEVELS.SUCCESS %}fas fa-wifi{% endif %}'
                     var type = '{% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}error{% elif message.level == DEFAULT_MESSAGE_LEVELS.SUCCESS %}success{% endif %}'
 
-                    show_notification(type, icon,'{{message|safe}}');
+                    show_notification(type, icon, '{{message|safe}}');
                 {% endfor %}
             {% endif %}
 
             {% if insert_coin %}
+                var coins_audio = document.getElementById("coins_audio");
+
                 countdown(slot_remaining_time);
 
                 q = setInterval(function(){
@@ -438,26 +422,47 @@
                         total_time_val = total_time.getTime();
 
                         $('.btn-done').removeClass('btn-outline-default').addClass('btn-outline-success');
-                        $('.btn-done').html('<span class="fas fa-paper-plane">\
-                                            </span><b> Surf the Net!</b><span class="badge badge-pill badge-warning">\
-                                            <strong>P ' + total_coins + '</strong></span>');
-                        $('.btn-done').removeAttr('disabled');
-                        $('.lbl_coins_inserted').text('P ' + total_coins);
-                        
-                        msg = 'Total of <strong>P' + total_coins + '</strong> is loaded. <strong>(+' + time_formatter(total_time_val) + ')</strong>';
-                        show_notification('info', 'fa fas-coins', msg);
-                        coins_audio.play();
 
+                        $('.btn-done').html('<span class="fas fa-paper-plane"></span>\
+                                            <b> Surf the Net!</b>\
+                                            <span class="badge badge-pill badge-warning">\
+                                            <strong>₱' + total_coins + '</strong></span>');
+
+                        $('.btn-done').removeAttr('disabled');
                         
-                        {% if voucher_flg == 1 %}
-                            var vcode = document.getElementById('vcode')
-                            if(vcode==null){
-                                $('#divInsertCoin').append('<div class="row" id="vcode"> <div class="col text-center">  \
-                                                <button type="button" class="btn btn-md btn-rounded btn-outline-danger" data-toggle="modal" data-target="#voucher-modal"> \
-                                                <span class="fas fa-barcode"></span> Generate Voucher </button> </div> </div>')
-                            }
+                        {% if voucher_flg %}
+                            $('.btn-generate').removeClass('btn-outline-default').addClass('btn-outline-danger');
+                            $('.btn-generate').removeAttr('disabled');
                         {% endif %}
+
+                        msg = 'Total of <strong>₱' + total_coins + '</strong> is loaded. <strong>(+' + time_formatter(total_time_val) + ')</strong>';
+                        show_notification('info', 'fa fas-coins', msg);
+                        coins_play.play();
                     }
+                }
+            {% endif %}
+
+            {% if voucher_flg %}
+                var voucher_form = $('#voucher_form');
+                
+                $('.btn_redeem_voucher').on('click', function(){
+                    var voucher = $(this).attr('data-voucher');
+                    redeem_voucher(voucher)
+                })
+
+                $('#btn_voucher_redeem').on('click', function(){
+                    var voucher = $('input[name=input_voucher_redeem]').val();
+                    if(voucher){
+                        redeem_voucher(voucher);
+                    }
+                })
+
+                function redeem_voucher(voucher){
+                    voucher_form.append($('<input>').attr({
+                        type: 'hidden',
+                        name: 'voucher_code',
+                        value: voucher
+                    })).submit()
                 }
             {% endif %}
         })
