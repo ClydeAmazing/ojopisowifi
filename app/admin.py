@@ -1,6 +1,4 @@
-from django.core.exceptions import ObjectDoesNotExist
 from django.contrib import admin, messages
-from django.http import HttpResponseRedirect
 from django.urls import path
 from app import models, forms
 from app.opw import cc

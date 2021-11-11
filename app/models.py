@@ -1,4 +1,3 @@
-from typing import Type
 from django.core.exceptions import ValidationError
 from django.db import models
 from datetime import timedelta
@@ -209,6 +208,7 @@ class CoinSlot(models.Model):
     Slot_ID = models.CharField(default=generate_code, unique=True, max_length=10, null=False, blank=False)
     Slot_Address = models.CharField(unique=True, max_length=17, null=False, blank=False, default='00:00:00:00:00:00')
     Slot_Desc = models.CharField(max_length=50, null=True, blank=True, verbose_name='Description')
+    Counter = models.IntegerField(default=0)
     Last_Updated = models.DateTimeField(null=True, blank=True, auto_now=True)
 
     # def save(self, *args, **kwargs):

@@ -8,66 +8,16 @@ from django.utils import timezone
 from django.db.models import F
 from django.contrib import messages
 from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions, status
 from datetime import timedelta
-from app.opw import cc, grc, fprint
+from app.opw import api_response, cc, grc, credit_pulse
 from app import models
-
-from . import tasks
-
 from base64 import b64decode
+# import pyotp
 
 
 local_ip = ['::1', '127.0.0.1', '10.0.0.1']
-
-def api_response(code):
-    response = dict()
-
-    if code == 200:
-        response['code'] = code
-        response['status'] = 'Success'
-        response['description'] = ''
-
-    if code == 300:
-        response['code'] = code
-        response['status'] = 'Error'
-        response['description'] = 'Pay error.'
-
-    if code == 400:
-        response['code'] = code
-        response['status'] = 'Error'
-        response['description'] = 'Pay error. Slot Not Found.'
-
-    if code == 500:
-        response['code'] = code
-        response['status'] = 'Error'
-        response['description'] = 'Session Timeout. <strong><a href="/app/portal">Click to refresh your browser.</a></strong>'
-
-    if code == 600:
-        response['code'] = code
-        response['status'] = 'Error'
-        response['description'] = 'Someone is still paying. Try again.'
-
-    if code == 700:
-        response['code'] = code
-        response['status'] = 'Error'
-        response['description'] = 'Invalid action.'
-
-    if code == 800:
-        response['code'] = code
-        response['status'] = 'Error'
-        response['description'] = 'Client not found.'
-
-    if code == 900:
-        response['code'] = code
-        response['status'] = 'Error'
-        response['description'] = 'Unknown coin inserted.'
-
-    if code == 110:
-        response['code'] = code
-        response['status'] = 'Error'
-        response['description'] = 'Invalid / Used / Expired voucher code.'
-
-    return  response
 
 def getClientInfo(ip, mac, fas):
     info = dict()
@@ -373,80 +323,20 @@ class Redeem(View):
             
         return redirect('app:portal')
 
-# class InsertCoin(APIView):
+# @method_decorator(csrf_exempt, name='dispatch')
+class Pay(APIView):
+    permission_classes = [permissions.AllowAny]
 
-
-@method_decorator(csrf_exempt, name='dispatch')
-class Pay(View):
     def get(self, request):
-        if request.is_ajax() and request.META['REMOTE_ADDR'] in local_ip:
-            fp = fprint()
-            dev = models.Device.objects.get(pk=1)
-            if fp:
-                dev.Ethernet_MAC = fp['eth0_mac']
-                dev.Device_SN = fp['serial']
-            dev.action = 0
-            sync_time = dev.Sync_Time
-            dev.save()
-
-            settings = models.Settings.objects.values('Coinslot_Pin', 'Light_Pin', 'Slot_Timeout', 'Inactive_Timeout').get(pk=1)
-            clients = models.Clients.objects.filter(Expire_On__isnull=False)
-            for client in clients:
-                time_diff = client.Expire_On - dev.Sync_Time
-                if time_diff > timedelta(0):
-                    client.Time_Left += time_diff
-                    client.Expire_On = None
-                    client.save()
-
-            context = dict()
-            context['device'] = {'Sync_Time': sync_time}
-            context['settings'] = settings
-            return JsonResponse(context, safe=False)
-        else:
-            raise Http404("Page not found")
+        settings = models.Settings.objects.values('Coinslot_Pin', 'Light_Pin', 'Slot_Timeout', 'Inactive_Timeout').get(pk=1)
+        return Response(settings, status=status.HTTP_200_OK)
 
     def post(self, request):
-        # if not request.is_ajax() and request.META['REMOTE_ADDR'] in local_ip:
-        device_MAC = request.POST.get('mac_address')
-        identifier = request.POST.get('identifier')
-        pulse = int(request.POST.get('pulse', 0))
-
-        try:
-            slot_info = models.CoinSlot.objects.get(Slot_Address=device_MAC, Slot_ID=identifier)
-        except models.CoinSlot.DoesNotExist:
-            resp = api_response(400)
-        else:
-            try:
-                rates = models.Rates.objects.get(Pulse=pulse)
-            except models.Rates.DoesNotExist:
-                resp = api_response(900)
-            else:
-                connected_client = slot_info.Client
-                is_inserting = False
-
-                if connected_client:
-                    is_inserting, _, _ = connected_client.is_inserting_coin()
-
-                if is_inserting:
-                    ledger = models.Ledger()
-                    ledger.Client = connected_client
-                    ledger.Denomination = rates.Denom
-                    ledger.Slot_No = slot_info.pk
-                    ledger.save()
-
-                    q, _ = models.CoinQueue.objects.get_or_create(Client=connected_client)
-                    q.Total_Coins += rates.Denom
-                    q.save()
-
-                    slot_info.save()
-
-                    resp = api_response(200)
-                else:
-                    resp = api_response(300)
+        slot_id = request.data.get('identifier')
+        pulse = int(request.data.get('pulse', 0))
+        resp = credit_pulse(slot_id, pulse)
 
         return JsonResponse(resp, safe=False)
-        # else:
-        #     raise Http404("Page not found")
 
 class Commit(View):
     def get(self, request):
@@ -485,7 +375,6 @@ class Commit(View):
 
             return JsonResponse(data)
 
-# Control Section
 class GenerateRC(View):
     def post(self, request):
         if not request.is_ajax() and not request.user.is_authenticated:
@@ -520,62 +409,3 @@ class ActivateDevice(View):
         else:
             response['message'] = 'Error'
             return JsonResponse(response)
-
-class Sweep(View):
-    def get(self, request):
-        if request.is_ajax() and request.META['REMOTE_ADDR'] in local_ip:
-            models.Device.objects.filter(pk=1).update(Sync_Time=timezone.now())
-            device = models.Device.objects.get(pk=1)
-            push_notif = models.PushNotifications.objects.values('Enabled', 'app_id', 'notification_title', 'notification_message', 'notification_trigger_time').get(pk=1)
-            
-            settings = models.Settings.objects.get(pk=1)
-            del_clients = models.Clients.objects.all()
-            for del_client in del_clients:
-                if del_client.Connection_Status == 'Disconnected':
-                    if del_client.Expire_On:
-                        diff = timezone.now() - del_client.Expire_On
-                    else:
-                        diff = timezone.now() - del_client.Date_Created
-                    if diff > timedelta(minutes=settings.Inactive_Timeout):
-                        del_client.delete()
-
-            clients = models.Clients.objects.all().values()
-            context = dict()
-
-            context['clients'] = list(client for client in clients if client['Expire_On'] and (client['Expire_On'] - timezone.now() > timedelta(0)))
-            context['system_action'] = device.action
-            whitelist = models.Whitelist.objects.all().values_list('MAC_Address')
-            context['whitelist'] = list(x[0] for x in whitelist)
-
-            if push_notif['Enabled']:
-                context['push_notif'] = push_notif
-                push_notif_clients_qs  = models.Clients.objects.filter(Notified_Flag=False)
-                push_notif_clients = list(x.Notification_ID for x in push_notif_clients_qs if x.running_time <= push_notif['notification_trigger_time'] and x.Connection_Status == 'Connected' and x.Notification_ID)
-                context['push_notif_clients'] = push_notif_clients
-                models.Clients.objects.filter(Notification_ID__in=push_notif_clients).update(Notified_Flag=True)
-            else:
-                context['push_notif'] = None
-                context['push_notif_clients'] = None
-
-            return JsonResponse(context, safe=False)
-        else:
-            raise Http404("Page not found")
-
-class testing(View):
-    def get(self, request):
-        result = tasks.sweep.delay()
-
-        if result.ready():
-            print("Task has run")
-            # if result.successful():
-            #     print("Result was: %s" % result.result)
-            # else:
-            #     if isinstance(result.result, Exception):
-            #         print("Task failed due to raising an exception")
-            #         # raise result.result
-            #     else:
-            #         print("Task failed without raising exception")
-        else:
-            print("Task has not yet run")
-
-        return HttpResponse('Hello world')

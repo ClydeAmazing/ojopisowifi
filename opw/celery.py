@@ -7,12 +7,16 @@ app = Celery('opw')
 
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
-# app.conf.beat_schedule = {
-#     'pending_requests_notification_daily': {
-#         'task': 'app.tasks.sweep',
-#         'schedule': 15
-#     }
-# }
+app.conf.beat_schedule = {
+    # 'system_sync': {
+    #     'task': 'app.tasks.system_sync',
+    #     'schedule': 15
+    # },
+    'sweeping': {
+        'task': 'app.tasks.sweep',
+        'schedule': 15
+    }
+}
 
 app.autodiscover_tasks()
 

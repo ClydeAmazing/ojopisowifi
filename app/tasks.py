@@ -1,9 +1,27 @@
 from django.utils import timezone
 from celery import shared_task
-from app.models import CoinSlot, Rates, Ledger, CoinQueue, Clients, PushNotifications, Device
+from app.models import CoinSlot, Rates, Ledger, CoinQueue, Clients, PushNotifications, Device, Settings
+from app.opw import fprint
 from datetime import timedelta
 import requests, json, subprocess
 
+@shared_task
+def system_sync():
+    fp = fprint()
+    dev = Device.objects.get(pk=1)
+    sync_time = dev.Sync_Time
+    dev.Ethernet_MAC = fp['eth0_mac']
+    dev.Device_SN = fp['serial']
+    dev.action = 0 # TODO: Check if this is still relevant
+    dev.save()
+
+    clients = Clients.objects.filter(Expire_On__isnull=False)
+    for client in clients:
+        time_diff = client.Expire_On - sync_time
+        if time_diff > timedelta(0):
+            client.Time_Left += time_diff
+            client.Expire_On = None
+            client.save()
 
 @shared_task
 def built_in_payment(device_MAC, identifier, pulse):
@@ -52,8 +70,8 @@ def built_in_payment(device_MAC, identifier, pulse):
 def send_push_notif():
     try:
         clients = Clients.objects.filter(Notified_Flag=False)
-        if clients:
-            push_notif = PushNotifications.objects.get(pk=1)
+        push_notif = PushNotifications.objects.get(pk=1)
+        if clients and push_notif.Enabled:
             app_id = push_notif.app_id
             notif_title = push_notif.notification_title
             notif_message = push_notif.notification_message
@@ -94,14 +112,9 @@ def sweep():
         if client.Connection_Status == 'Disconnected':
             expire_datetime = client.Expire_On if client.Expire_On else client.Date_Created
             diff = timezone.now() - expire_datetime
-            print(diff)
-            print(timedelta(minutes=client.Settings.Inactive_Timeout))
-            if diff > timedelta(minutes=client.Settings.Inactive_Timeout):
-                print('Client for delete')
-                client.delete()
 
-            else:
-                print('Client not for delete')
+            if diff > timedelta(minutes=client.Settings.Inactive_Timeout):
+                client.delete()
 
     # whitelist = models.Whitelist.objects.all().values_list('MAC_Address')
     # Work on whitelisted clients
@@ -115,10 +128,4 @@ def sweep():
     #     pass
 
     # Sending push notifications
-    # send_push_notif.delay()
-
-    print('swept')
-
-# @shared_task
-# def testing():
-#     print('Hello World')
+    send_push_notif.delay()
