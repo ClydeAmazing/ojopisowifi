@@ -16,7 +16,7 @@ class Settings(models.Model):
 
     Hotspot_Name = models.CharField(max_length=255)
     Hotspot_Address = models.CharField(max_length=255, null=True, blank=True)
-    BG_Image = models.ImageField(upload_to=get_image_path, blank=True, null=True)
+    # BG_Image = models.ImageField(upload_to=get_image_path, blank=True, null=True)
     Slot_Timeout = models.PositiveIntegerField(help_text='Slot timeout in seconds. Default is 15', default=15, validators=[MinValueValidator(1), MaxValueValidator(30)])
     Rate_Type = models.CharField(max_length=25, default="auto", choices=rate_type_choices, help_text='Select "Minutes/Peso" to use  Minutes / Peso value, else use "Custom Rate" to manually setup Rates based on coin value.')
     Base_Value = models.DurationField(default=timezone.timedelta(minutes=0), verbose_name='Minutes / Peso')
