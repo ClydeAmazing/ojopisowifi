@@ -13,4 +13,4 @@ urlpatterns = [
     path('app/api/', include('app.api.urls')),
     path('', Main.as_view(), name='index')
     # path('', RedirectView.as_view(url='/app/portal')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] 

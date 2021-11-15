@@ -1,33 +1,33 @@
+.row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
 
 .bg-gray {
-    background-color: #585757;
+  background-color: #585757;
 }
 
 .card-captive {
-    max-width: 25rem;
-    /*background-image: url('/static/build/images/bg.png');*/
-    background-color: #e5ffe9;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-blend-mode: hard-light;
+  max-width: 25rem;
+  /*background-image: url('/static/build/images/bg.png');*/
+  background-color: #e5ffe9;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-blend-mode: hard-light;
 }
 
 .slot_countdown{
-    -webkit-transition: none !important;
-    -moz-transition: none !important;
-    -ms-transition: none !important;
-    -o-transition: none !important;
-    transition: none !important;
-}
-
-.btn-done{
-    /*cursor: pointer;*/
+  -webkit-transition: none !important;
+  -moz-transition: none !important;
+  -ms-transition: none !important;
+  -o-transition: none !important;
+  transition: none !important;
 }
 
 .btn-insert-coin{
-    padding: 0;
-    cursor: pointer;
+  padding: 0;
+  cursor: pointer;
 }
 
 .btn-insert-coin:disabled{
@@ -35,18 +35,18 @@
 }
 
 .btn-rounded{
-    border-radius: 20px !important;
+  border-radius: 20px !important;
 }
 
 .btn-normal {
-    text-transform: none !important;
+  text-transform: none !important;
 }
 
 .blinking {
-    -webkit-animation:blinkingText 0.8s infinite;
-    -moz-animation:blinkingText 0.8s infinite;
-    -o-animation:blinkingText 0.8s infinite;
-    animation:blinkingText 0.8s infinite;
+  -webkit-animation:blinkingText 0.8s infinite;
+  -moz-animation:blinkingText 0.8s infinite;
+  -o-animation:blinkingText 0.8s infinite;
+  animation:blinkingText 0.8s infinite;
 }
 
 @-webkit-keyframes blinkingText{50%{color: transparent}}
@@ -82,10 +82,10 @@
 .pulsating {
   box-shadow: 0 0 0 0 rgb(236, 140, 140);
 	transform: scale(1);
-	animation: pulse-black 2s infinite;
+	animation: pulse 2s infinite;
 }
 
-@keyframes pulse-black {
+@keyframes pulse {
 	0% {
 		transform: scale(0.95);
 		box-shadow: 0 0 0 0 rgb(236, 140, 140);
