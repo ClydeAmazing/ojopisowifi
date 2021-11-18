@@ -14,7 +14,7 @@ app.conf.beat_schedule = {
     # },
     'sweeping': {
         'task': 'app.tasks.sweep',
-        'schedule': 15
+        'schedule': 20
     }
 }
 

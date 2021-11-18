@@ -122,7 +122,6 @@ def getSettings():
     return info
 
 def generatePayload(fas):
-    # decrypted = b64decode(b64decode(fas.encode('utf-8'))).decode('utf-8')
     decrypted =b64decode(fas.encode('utf-8')).decode('utf-8')
     fas_data = decrypted.split(', ')
     payload = dict()
@@ -130,6 +129,8 @@ def generatePayload(fas):
         if '=' in data:
             parsed_data = data.split('=')
             payload[parsed_data[0]] = None if parsed_data[1] == '(null)' else parsed_data[1]
+    print(fas_data)
+    print(payload)
     return payload
 
 class Portal(View):
@@ -155,6 +156,7 @@ class Portal(View):
                 request.session['ip_address'] = payload['clientip']
                 request.session['mac_address'] = payload['clientmac']
                 request.session['fas'] = fas
+                request.session['hid'] = payload['hid']
 
                 ip = payload['clientip']
                 mac = payload['clientmac']
@@ -175,15 +177,16 @@ class Portal(View):
                 return redirect(settings['opennds_gateway'])
 
         info = getClientInfo(ip, mac, fas)
-        context = {**settings, **info, 'fas': fas}
+        context = {**settings, **info}
         return render(request, self.template_name, context=context)
 
     def post(self, request, fas=None):
         mac = request.session.get('mac_address', None)
         ip = request.session.get('ip_address', None)
+        hid = request.session.get('hid', None)
         settings = getSettings()
 
-        if mac and ip:
+        if mac and ip and hid:
             if 'pause_resume' in request.POST:
                 action = request.POST['pause_resume']
                 try:
@@ -262,7 +265,14 @@ class Portal(View):
 
                     client.expire_slot()
 
-                    messages.success(request, f'₱{str(total_coins)} credited successfully. Enjoy Browsing')
+                    if total_coins > 0:
+                        messages.success(request, f'₱{str(total_coins)} credited successfully. Enjoy Browsing')
+                        gateway = settings['opennds_gateway']
+                        auth_dir = 'opennds_auth'
+
+                        nds_auth_url = f"{gateway}/{auth_dir}"
+                        return redirect(nds_auth_url, )
+
                 except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):
                     resp = api_response(700)
                     messages.error(request, resp['description'])

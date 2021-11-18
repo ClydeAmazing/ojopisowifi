@@ -24,13 +24,13 @@ def system_sync():
             client.save()
 
 @shared_task
-def built_in_payment(device_MAC, identifier, pulse):
+def built_in_payment(identifier, pulse):
     # device_MAC = request.POST.get('mac_address')
     # identifier = request.POST.get('identifier')
     # pulse = int(request.POST.get('pulse', 0))
 
     try:
-        slot_info = CoinSlot.objects.get(Slot_Address=device_MAC, Slot_ID=identifier)
+        slot_info = CoinSlot.objects.get(Slot_ID=identifier)
     except CoinSlot.DoesNotExist:
         return False
         # resp = api_response(400)

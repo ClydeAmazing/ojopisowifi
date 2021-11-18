@@ -82,10 +82,10 @@
 .pulsating {
   box-shadow: 0 0 0 0 rgb(236, 140, 140);
 	transform: scale(1);
-	animation: pulse 2s infinite;
+	animation: pulse-red 2s infinite;
 }
 
-@keyframes pulse {
+@keyframes pulse-red {
 	0% {
 		transform: scale(0.95);
 		box-shadow: 0 0 0 0 rgb(236, 140, 140);
