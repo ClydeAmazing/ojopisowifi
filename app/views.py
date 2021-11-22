@@ -111,7 +111,6 @@ def getSettings():
     info['rate_type'] = rate_type
     info['hotspot'] = settings.Hotspot_Name
     info['slot_timeout'] = settings.Slot_Timeout
-    # info['background'] = settings.BG_Image
     info['voucher_flg'] = settings.Vouchers_Flg
     info['pause_resume_flg'] = settings.Pause_Resume_Flg
     info['pause_resume_enable_time'] = 0 if not settings.Disable_Pause_Time else int(timedelta.total_seconds(settings.Disable_Pause_Time))
@@ -129,8 +128,6 @@ def generatePayload(fas):
         if '=' in data:
             parsed_data = data.split('=')
             payload[parsed_data[0]] = None if parsed_data[1] == '(null)' else parsed_data[1]
-    print(fas_data)
-    print(payload)
     return payload
 
 class Portal(View):

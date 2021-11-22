@@ -49,11 +49,10 @@ class Clients(models.Model):
     Time_Left = models.DurationField(default=timezone.timedelta(minutes=0))
     Connected_On = models.DateTimeField(null=True, blank=True)
     Expire_On = models.DateTimeField(null=True, blank=True)
-    Upload_Rate = models.IntegerField(verbose_name='Upload Bandwidth', help_text='Specify client internet upload bandwidth in Kbps. No value = unlimited bandwidth', null=True, blank=True )
-    Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify client internet download bandwidth in Kbps. No value = unlimited bandwidth', null=True, blank=True )
+    Upload_Rate = models.IntegerField(verbose_name='Upload Bandwidth', help_text='Specify client internet upload bandwidth in Kbps. No value = unlimited bandwidth', default=0)
+    Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify client internet download bandwidth in Kbps. No value = unlimited bandwidth', default=0)
     Notification_ID = models.CharField(verbose_name = 'Notification ID', max_length=255, null=True, blank = True)
     Notified_Flag = models.BooleanField(default=False)
-    # Pause_Count = models.IntegerField(default=0)
     Date_Created = models.DateTimeField(auto_now_add=True)
     FAS_Session = models.CharField(max_length=500, unique=True)
     Settings = models.ForeignKey(Settings, on_delete=models.CASCADE)
@@ -280,8 +279,8 @@ class Network(models.Model):
     Netmask = models.GenericIPAddressField(protocol='IPv4', default='255.255.255.0', null=False, blank=False)
     DNS_1 = models.GenericIPAddressField(protocol='IPv4', verbose_name='DNS 1', default='8.8.8.8', null=False, blank=False)
     DNS_2 = models.GenericIPAddressField(protocol='IPv4', verbose_name='DNS 2 (Optional)', default='8.8.4.4', null=True, blank=True)
-    Upload_Rate = models.IntegerField(verbose_name='Upload Bandwidth', help_text='Specify global internet upload bandwidth in Kbps. No value = unlimited bandwidth', null=True, blank=True )
-    Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify global internet download bandwidth in Kbps. No value = unlimited bandwidth', null=True, blank=True )
+    Upload_Rate = models.IntegerField(verbose_name='Upload Bandwidth', help_text='Specify global internet upload bandwidth in Kbps. 0 = unlimited bandwidth', default=0)
+    Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify global internet download bandwidth in Kbps. 0 = unlimited bandwidth', default=0)
 
     class Meta:
         verbose_name = 'Network'
