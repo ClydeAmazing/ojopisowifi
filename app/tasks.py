@@ -1,21 +1,21 @@
 from django.utils import timezone
 from celery import shared_task
-from app.models import CoinSlot, Rates, Ledger, CoinQueue, Clients, PushNotifications, Device, Settings
+from app import models
 from app.opw import fprint
 from datetime import timedelta
-import requests, json, subprocess
+import requests, json, subprocess, ast
 
 @shared_task
 def system_sync():
     fp = fprint()
-    dev = Device.objects.get(pk=1)
+    dev = models.Device.objects.get(pk=1)
     sync_time = dev.Sync_Time
     dev.Ethernet_MAC = fp['eth0_mac']
     dev.Device_SN = fp['serial']
     dev.action = 0 # TODO: Check if this is still relevant
     dev.save()
 
-    clients = Clients.objects.filter(Expire_On__isnull=False)
+    clients = models.Clients.objects.filter(Expire_On__isnull=False)
     for client in clients:
         time_diff = client.Expire_On - sync_time
         if time_diff > timedelta(0):
@@ -25,21 +25,15 @@ def system_sync():
 
 @shared_task
 def built_in_payment(identifier, pulse):
-    # device_MAC = request.POST.get('mac_address')
-    # identifier = request.POST.get('identifier')
-    # pulse = int(request.POST.get('pulse', 0))
-
     try:
-        slot_info = CoinSlot.objects.get(Slot_ID=identifier)
-    except CoinSlot.DoesNotExist:
+        slot_info = models.CoinSlot.objects.get(Slot_ID=identifier)
+    except models.CoinSlot.DoesNotExist:
         return False
-        # resp = api_response(400)
     else:
         try:
-            rates = Rates.objects.get(Pulse=pulse)
-        except Rates.DoesNotExist:
+            rates = models.Rates.objects.get(Pulse=pulse)
+        except models.Rates.DoesNotExist:
             return False
-            # resp = api_response(900)
         else:
             connected_client = slot_info.Client
             is_inserting = False
@@ -48,29 +42,27 @@ def built_in_payment(identifier, pulse):
                 is_inserting, _, _ = connected_client.is_inserting_coin()
 
             if is_inserting:
-                ledger = Ledger()
+                ledger = models.Ledger()
                 ledger.Client = connected_client
                 ledger.Denomination = rates.Denom
                 ledger.Slot_No = slot_info.pk
                 ledger.save()
 
-                q, _ = CoinQueue.objects.get_or_create(Client=connected_client)
+                q, _ = models.CoinQueue.objects.get_or_create(Client=connected_client)
                 q.Total_Coins += rates.Denom
                 q.save()
 
                 slot_info.save()
 
-                # resp = api_response(200)
                 return True
             else:
                 return False
-                # resp = api_response(300)
 
 @shared_task
 def send_push_notif():
     try:
-        clients = Clients.objects.filter(Notified_Flag=False)
-        push_notif = PushNotifications.objects.get(pk=1)
+        clients = models.Clients.objects.filter(Notified_Flag=False)
+        push_notif = models.PushNotifications.objects.get(pk=1)
         if clients and push_notif.Enabled:
             app_id = push_notif.app_id
             notif_title = push_notif.notification_title
@@ -87,7 +79,7 @@ def send_push_notif():
             host = "https://onesignal.com/api/v1/notifications"
             response = requests.post(host, headers=header, data=json.dumps(payload))
             if response.status_code == 200:
-                Clients.objects.filter(Notification_ID__in=player_ids).update(Notified_Flag=True)
+                models.Clients.objects.filter(Notification_ID__in=player_ids).update(Notified_Flag=True)
     except Exception:
         pass # hahaha! A mortal sin. Maybe log this in the future
 
@@ -105,9 +97,10 @@ def restart_system():
 
 @shared_task
 def sweep():
-    Device.objects.get(pk=1).save()
+    models.Device.objects.get(pk=1).save()
 
-    clients = Clients.objects.all()
+    clients = models.Clients.objects.all()
+
     for client in clients:
         if client.Connection_Status == 'Disconnected':
             expire_datetime = client.Expire_On if client.Expire_On else client.Date_Created
@@ -116,16 +109,64 @@ def sweep():
             if diff > timedelta(minutes=client.Settings.Inactive_Timeout):
                 client.delete()
 
-    # whitelist = models.Whitelist.objects.all().values_list('MAC_Address')
-    # Work on whitelisted clients
+    ndsctl_res = subprocess.run(['sudo', 'ndsctl', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if not ndsctl_res.stderr:
+        ndsctl_response = ast.literal_eval(ndsctl_res.stdout.decode('utf-8'))
+        ndsctl_clients = ndsctl_response['clients']
 
-    # TODO: Activate/Deactivate clients based on current status using NDSCTL commands
-    # res = subprocess.run(['sudo', 'ndsctl', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    # if not res.stderr:
-    #     Authentication
+        preauth_clients = []
+        auth_clients = []
 
-    #     Deauthentication
-    #     pass
+        for ndsctl_client in ndsctl_clients:
+            client_status = ndsctl_clients[ndsctl_client]['state']
+            if client_status == 'Preauthenticated':
+                preauth_clients.append(ndsctl_client)
+            elif client_status == 'Authenticated':
+                auth_clients.append(ndsctl_client)
 
-    # Sending push notifications
+        connected_client_list = {
+            c.MAC_Address:{
+                'Upload_Rate': c.Upload_Rate,
+                'Download_Rate': c.Download_Rate,
+            }
+            for c in clients if c.Connection_Status == 'Connected'
+        }
+
+        whitelists = models.Whitelist.objects.all()
+        network_settings = models.Network.objects.get(pk=1)
+
+        connected_clients = [c for c in connected_client_list]
+        whitelisted_clients = [c.MAC_Address for c in whitelists]
+
+        global_upload_rate = network_settings.Upload_Rate
+        global_download_rate = network_settings.Download_Rate
+
+        for_auth_clients = set(preauth_clients).intersection(connected_clients, whitelisted_clients)
+        for_deauth_clients = set(auth_clients).difference(connected_clients, whitelisted_clients)
+
+        # Authentication
+        for client in for_auth_clients:
+            if client in connected_client_list:
+                client_data = connected_client_list[client]
+
+                upload_rate = client_data['Upload_Rate'] if client_data['Upload_Rate'] > 0 else global_upload_rate
+                download_rate = client_data['Download_Rate'] if client_data['Download_Rate'] > 0 else global_download_rate
+            else:
+                upload_rate = global_upload_rate
+                download_rate = global_download_rate
+
+            cmd = ['sudo', 'ndsctl', 'auth', client, str(0), str(upload_rate), str(download_rate)]
+            ndsctl_res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            if not ndsctl_res.stderr:
+                print('Client ' + client + ' successfully authenticated.')
+
+        # Deauthentication
+        for client in for_deauth_clients:
+            cmd = ['sudo', 'ndsctl', 'deauth', client]
+            ndsctl_res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            if not ndsctl_res.stderr:
+                print('Client ' + client + ' sucessfully deauthenticated.')
+
     send_push_notif.delay()
