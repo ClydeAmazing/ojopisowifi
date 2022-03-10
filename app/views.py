@@ -9,8 +9,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from datetime import timedelta
-from app.opw import api_response, cc, grc, credit_pulse
 from app import models
+from app.opw import api_response, cc, grc, credit_pulse
+from app.tasks import toggle_slot
 from base64 import b64decode
 # import pyotp
 
@@ -111,6 +112,7 @@ def getSettings():
     info['rate_type'] = rate_type
     info['hotspot'] = settings.Hotspot_Name
     info['slot_timeout'] = settings.Slot_Timeout
+    info['slot_light_pin'] = settings.Light_Pin
     info['voucher_flg'] = settings.Vouchers_Flg
     info['pause_resume_flg'] = settings.Pause_Resume_Flg
     info['pause_resume_enable_time'] = 0 if not settings.Disable_Pause_Time else int(timedelta.total_seconds(settings.Disable_Pause_Time))
@@ -250,6 +252,9 @@ class Portal(View):
                     if not created:
                         coin_queue.save()
 
+                    # Activate coinslot
+                    toggle_slot.delay(1, settings['slot_light_pin'])
+
                     messages.success(request, 'Insert coin')
 
             if 'connect' in request.POST:
@@ -261,6 +266,9 @@ class Portal(View):
                     coin_queue.Claim_Queue()
 
                     client.expire_slot()
+
+                    # Deactivate coinslot
+                    toggle_slot.delay(0, settings['slot_light_pin'])
 
                     if total_coins > 0:
                         messages.success(request, f'₱{str(total_coins)} credited successfully. Enjoy Browsing')
@@ -289,6 +297,8 @@ class Portal(View):
                     coin_queue.delete()
 
                     client.expire_slot()
+                    # Deactivate coinslot
+                    toggle_slot.delay(0, settings['slot_light_pin'])
 
                     messages.success(request, f'Voucher code {voucher.Voucher_code} successfully generated. The code is added to your voucher list.')
                 except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):

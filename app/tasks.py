@@ -96,6 +96,12 @@ def restart_system():
         print(res.stderr.decode('utf-8'))
 
 @shared_task
+def toggle_slot(action, light_pin):
+    res = subprocess.run(['gpio', '-1', 'write', str(light_pin), str(action)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if res.stderr:
+        print(res.stderr.decode('utf-8'))
+
+@shared_task
 def sweep():
     models.Device.objects.get(pk=1).save()
 
@@ -141,8 +147,9 @@ def sweep():
         global_upload_rate = network_settings.Upload_Rate
         global_download_rate = network_settings.Download_Rate
 
-        for_auth_clients = set(preauth_clients).intersection(connected_clients, whitelisted_clients)
-        for_deauth_clients = set(auth_clients).difference(connected_clients, whitelisted_clients)
+        all_connected_clients = set(connected_clients).union(whitelisted_clients)
+        for_auth_clients = set(preauth_clients).intersection(all_connected_clients)
+        for_deauth_clients = set(auth_clients).difference(all_connected_clients)
 
         # Authentication
         for client in for_auth_clients:
