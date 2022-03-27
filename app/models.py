@@ -1,24 +1,61 @@
 from django.core.exceptions import ValidationError
-from django.contrib import messages
 from django.db import models
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.utils import timezone
-from django.urls import reverse
-import subprocess
+from django.core.validators import MaxValueValidator, MinValueValidator
 import string, random, os, math
+
+class Settings(models.Model):
+    rate_type_choices = (
+        ('auto', 'Minutes/Peso'),
+        ('manual', 'Custom Rate'),
+    )
+
+    def get_image_path(instance, filename):
+        return os.path.join(str(instance.id), filename)
+
+    Hotspot_Name = models.CharField(max_length=255)
+    Hotspot_Address = models.CharField(max_length=255, null=True, blank=True)
+    # BG_Image = models.ImageField(upload_to=get_image_path, blank=True, null=True)
+    Slot_Timeout = models.PositiveIntegerField(help_text='Slot timeout in seconds. Default is 15', default=15, validators=[MinValueValidator(1), MaxValueValidator(30)])
+    Rate_Type = models.CharField(max_length=25, default="auto", choices=rate_type_choices, help_text='Select "Minutes/Peso" to use  Minutes / Peso value, else use "Custom Rate" to manually setup Rates based on coin value.')
+    Base_Value = models.DurationField(default=timezone.timedelta(minutes=0), verbose_name='Minutes / Peso')
+    Inactive_Timeout = models.IntegerField(verbose_name='Inactive Timeout', help_text='Timeout before an idle client (status = Disconnected) is removed from the client list. (Minutes)')
+    Redir_Url = models.CharField(max_length=255, verbose_name='Redirect URL', help_text='Redirect url after a successful login. If not set, will default to the timer page.', null=True, blank=True)
+    Vouchers_Flg = models.BooleanField(verbose_name='Vouchers', default=True, help_text='Enables voucher module.')
+    Pause_Resume_Flg = models.BooleanField(verbose_name='Pause/Resume', default=True, help_text='Enables pause/resume function.')
+    # Pause_Limit = models.IntegerField(null=True, blank=True, help_text='Sets allowable number of pauses a client can have. No value means unlimited time pauses.')
+    Disable_Pause_Time = models.DurationField(default=timezone.timedelta(minutes=0), null=True, blank=True, help_text='Disables Pause time button if remaining time is less than the specified time hh:mm:ss format.')
+    Coinslot_Pin = models.IntegerField(verbose_name='Coinslot Pin', help_text='Please refer raspberry/orange pi GPIO.BOARD pinout.', null=True, blank=True)
+    Light_Pin = models.IntegerField(verbose_name='Light Pin', help_text='Please refer raspberry/orange pi GPIO.BOARD pinout.', null=True, blank=True)
+    OpenNDS_Gateway = models.URLField(max_length=200, default='http://10.0.0.1:2050', help_text='Captive portal gateway server url.')
+    Show_User_Details = models.BooleanField(default=False, help_text='Shows client IP and MAC address on the main portal')
+
+    def clean(self, *args, **kwargs):
+        if self.Coinslot_Pin or self.Light_Pin:
+            if self.Coinslot_Pin == self.Light_Pin:
+                raise ValidationError('Coinslot Pin should not be the same as Light Pin.')
+
+    class Meta:
+        verbose_name = 'Settings'
+
+    def __str__(self):
+        return 'Settings'
 
 class Clients(models.Model):
     IP_Address = models.CharField(max_length=15, verbose_name='IP')
     MAC_Address = models.CharField(max_length=255, verbose_name='MAC Address', unique=True)
     Device_Name = models.CharField(max_length=255, verbose_name='Device Name', null=True, blank=True)
     Time_Left = models.DurationField(default=timezone.timedelta(minutes=0))
+    Connected_On = models.DateTimeField(null=True, blank=True)
     Expire_On = models.DateTimeField(null=True, blank=True)
-    Upload_Rate = models.IntegerField(verbose_name='Upload Bandwidth', help_text='Specify client internet upload bandwidth in Kbps. No value = unlimited bandwidth', null=True, blank=True )
-    Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify client internet download bandwidth in Kbps. No value = unlimited bandwidth', null=True, blank=True )
+    Upload_Rate = models.IntegerField(verbose_name='Upload Bandwidth', help_text='Specify client internet upload bandwidth in Kbps. No value = unlimited bandwidth', default=0)
+    Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify client internet download bandwidth in Kbps. No value = unlimited bandwidth', default=0)
     Notification_ID = models.CharField(verbose_name = 'Notification ID', max_length=255, null=True, blank = True)
     Notified_Flag = models.BooleanField(default=False)
-    Date_Created = models.DateTimeField(default=timezone.now)
-
+    Date_Created = models.DateTimeField(auto_now_add=True)
+    FAS_Session = models.CharField(max_length=500, unique=True)
+    Settings = models.ForeignKey(Settings, on_delete=models.CASCADE)
 
     @property
     def running_time(self):
@@ -32,6 +69,13 @@ class Clients(models.Model):
                 return running_time
 
     @property
+    def total_time(self):
+        if self.Expire_On and self.Connected_On:
+            return timedelta.total_seconds(self.Expire_On - self.Connected_On)
+        else:
+            return 0
+
+    @property
     def Connection_Status(self):
         if self.running_time > timedelta(0):
             return 'Connected'
@@ -40,6 +84,29 @@ class Clients(models.Model):
                 return 'Paused'
             else:
                 return 'Disconnected'
+
+    def is_inserting_coin(self):
+        coinslot = CoinSlot.objects.filter(Client=self).order_by('-Last_Updated').first()
+        slot_timeout = self.Settings.Slot_Timeout
+
+        if coinslot and timedelta.total_seconds(timezone.now()-coinslot.Last_Updated) < slot_timeout :
+            remaining_time = slot_timeout - timedelta.total_seconds(timezone.now()-coinslot.Last_Updated)
+            return True, coinslot, remaining_time
+        else:
+            return False, None, 0
+
+    def expire_slot(self):
+        coinslot = CoinSlot.objects.filter(Client=self).order_by('-Last_Updated').first()
+        if coinslot:
+            coinslot.Client = None
+            coinslot.save()
+
+    def credit_amount(self, amount):
+        is_inserting, coinslot, _ = self.is_inserting_coin()
+        if is_inserting:
+            self.coin_queue.Total_Coins += amount
+            self.coin_queue.save()
+            coinslot.save() 
 
     def Connect(self, add_time = timedelta(0)):
         total_time = self.Time_Left + add_time
@@ -50,6 +117,7 @@ class Clients(models.Model):
             else:
                 self.Expire_On = timezone.now() + total_time
 
+            self.Connected_On = timezone.now()
             self.Time_Left = timedelta(0)
 
             push_notif = PushNotifications.objects.get(pk=1)
@@ -67,6 +135,7 @@ class Clients(models.Model):
         success_flag = False
         if self.Connection_Status == 'Connected':
             self.Expire_On = None
+            self.Connected_On = None
             self.Time_Left = timedelta(0)
             self.Notified_Flag = False
             self.save()
@@ -101,16 +170,11 @@ class Whitelist(models.Model):
         name =  self.MAC_Address if not self.Device_Name else self.Device_Name
         return 'Device: ' + name
 
-
 class Ledger(models.Model):
-    Date = models.DateTimeField()
+    Date = models.DateTimeField(verbose_name="Transaction Date", auto_now_add=True)
     Client = models.CharField(max_length=50)
     Denomination = models.IntegerField()
     Slot_No = models.IntegerField()
-
-    def save(self, *args, **kwargs):
-        self.Date = timezone.now()
-        super(Ledger, self).save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Ledger'
@@ -119,8 +183,12 @@ class Ledger(models.Model):
     def __str__(self):
         return 'Transaction no: ' + str(self.pk)
 
-
 class CoinSlot(models.Model):
+    TYPE_CHOICES = (
+        (0, 'Built In'),
+        (1, 'Sub Vendo')
+    )
+
     def generate_code(size=10):
         found = False
         random_code = None
@@ -134,18 +202,24 @@ class CoinSlot(models.Model):
         return random_code
 
     Edit = 'Edit'
-    Client = models.CharField(max_length=17, null=True, blank=True)
-    Last_Updated = models.DateTimeField(null=True, blank=True)
+    Client = models.ForeignKey(Clients, on_delete=models.SET_NULL, null=True, blank=True, related_name='coin_slot')
+    Type = models.IntegerField(default=1, choices=TYPE_CHOICES)
     Slot_ID = models.CharField(default=generate_code, unique=True, max_length=10, null=False, blank=False)
     Slot_Address = models.CharField(unique=True, max_length=17, null=False, blank=False, default='00:00:00:00:00:00')
     Slot_Desc = models.CharField(max_length=50, null=True, blank=True, verbose_name='Description')
+    Counter = models.IntegerField(default=0)
+    Last_Updated = models.DateTimeField(null=True, blank=True, auto_now=True)
+
+    # def save(self, *args, **kwargs):
+    #     if self.Type == 0 and CoinSlot.objects.filter(Type=0).exists():
+    #         raise ValidationError('A built-in coinslot already exists.')
+    #     super(CoinSlot, self).save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Coin Slot'
         verbose_name_plural = 'Coin Slot'
 
     def __str__(self):
-
         return 'Slot no: ' + str(self.pk)
 
 class Rates(models.Model):
@@ -161,14 +235,14 @@ class Rates(models.Model):
     def __str__(self):
         return 'Rate: ' + str(self.Denom)
 
-
 class CoinQueue(models.Model):
-    Client = models.CharField(max_length=17, null=True, blank=True)
+    Client = models.OneToOneField(Clients, on_delete=models.CASCADE, primary_key=True, related_name='coin_queue')
     Total_Coins = models.IntegerField(null=True, blank=True, default=0)
+    Last_Updated = models.DateTimeField(auto_now=True)
 
     @property
     def Total_Time(self):
-        settings = Settings.objects.get(pk=1)
+        settings = self.Client.Settings
         rate_type = settings.Rate_Type
         base_value = settings.Base_Value
         total_coins = self.Total_Coins
@@ -187,54 +261,17 @@ class CoinQueue(models.Model):
         
         return total_time
 
+    def Claim_Queue(self):
+        if self.Total_Coins > 0:
+            self.Client.Connect(self.Total_Time)
+        self.delete()
+
     class Meta:
         verbose_name = 'Coin Queue'
         verbose_name_plural = 'Coin Queue'
 
     def __str__(self):
-        if self.Client:
-            return 'Coin queue for: ' + self.Client
-        else:
-            return 'Record'
-
-
-class Settings(models.Model):
-    rate_type_choices = (
-        ('auto', 'Minutes/Peso'),
-        ('manual', 'Custom Rate'),
-    )
-    enable_disable_choices = (
-        (1, 'Enable'),
-        (0, 'Disable'),
-    )
-
-    def get_image_path(instance, filename):
-        return os.path.join(str(instance.id), filename)
-
-    Hotspot_Name = models.CharField(max_length=255)
-    Hotspot_Address = models.CharField(max_length=255, null=True, blank=True)
-    BG_Image = models.ImageField(upload_to=get_image_path, blank=True, null=True)
-    Slot_Timeout = models.IntegerField(help_text='Slot timeout in seconds.')
-    Rate_Type = models.CharField(max_length=25, default="auto", choices=rate_type_choices, help_text='Select "Minutes/Peso" to use  Minutes / Peso value, else use "Custom Rate" to manually setup Rates based on coin value.')
-    Base_Value = models.DurationField(default=timezone.timedelta(minutes=0), verbose_name='Minutes / Peso')
-    Inactive_Timeout = models.IntegerField(verbose_name='Inactive Timeout', help_text='Timeout before an idle client (status = Disconnected) is removed from the client list. (Minutes)')
-    Redir_Url = models.CharField(max_length=255, verbose_name='Redirect URL', help_text='Redirect url after a successful login. If not set, will default to the timer page.', null=True, blank=True)
-    Vouchers_Flg = models.IntegerField(verbose_name='Vouchers', default=1, choices=enable_disable_choices, help_text='Enables voucher module.')
-    Pause_Resume_Flg = models.IntegerField(verbose_name='Pause/Resume', default=1, choices=enable_disable_choices, help_text='Enables pause/resume function.')
-    Disable_Pause_Time = models.DurationField(default=timezone.timedelta(minutes=0), null=True, blank=True, help_text='Disables Pause time button if remaining time is less than the specified time hh:mm:ss format.')
-    Coinslot_Pin = models.IntegerField(verbose_name='Coinslot Pin', help_text='Please refer raspberry/orange pi GPIO.BOARD pinout.', null=True, blank=True)
-    Light_Pin = models.IntegerField(verbose_name='Light Pin', help_text='Please refer raspberry/orange pi GPIO.BOARD pinout.', null=True, blank=True)
-
-    def clean(self, *args, **kwargs):
-        if self.Coinslot_Pin or self.Light_Pin:
-            if self.Coinslot_Pin == self.Light_Pin:
-                raise ValidationError('Coinslot Pin should not be the same as Light Pin.')
-
-    class Meta:
-        verbose_name = 'Settings'
-
-    def __str__(self):
-        return 'Settings'
+        return 'Queue: ' + self.Client.MAC_Address
 
 class Network(models.Model):
     Edit = "Edit"
@@ -242,15 +279,14 @@ class Network(models.Model):
     Netmask = models.GenericIPAddressField(protocol='IPv4', default='255.255.255.0', null=False, blank=False)
     DNS_1 = models.GenericIPAddressField(protocol='IPv4', verbose_name='DNS 1', default='8.8.8.8', null=False, blank=False)
     DNS_2 = models.GenericIPAddressField(protocol='IPv4', verbose_name='DNS 2 (Optional)', default='8.8.4.4', null=True, blank=True)
-    Upload_Rate = models.IntegerField(verbose_name='Upload Bandwidth', help_text='Specify global internet upload bandwidth in Kbps. No value = unlimited bandwidth', null=True, blank=True )
-    Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify global internet download bandwidth in Kbps. No value = unlimited bandwidth', null=True, blank=True )
+    Upload_Rate = models.IntegerField(verbose_name='Upload Bandwidth', help_text='Specify global internet upload bandwidth in Kbps. 0 = unlimited bandwidth', default=0)
+    Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify global internet download bandwidth in Kbps. 0 = unlimited bandwidth', default=0)
 
     class Meta:
         verbose_name = 'Network'
 
     def __str__(self):
         return 'Network Settings'
-
 
 class Vouchers(models.Model):
     status_choices = (
@@ -273,10 +309,17 @@ class Vouchers(models.Model):
 
     Voucher_code = models.CharField(default=generate_code, max_length=20, null=False, blank=False, unique=True)
     Voucher_status = models.CharField(verbose_name='Status', max_length=25, choices=status_choices, default='Not Used', null=False, blank=False)
-    Voucher_client = models.CharField(verbose_name='Client', max_length=50, null=True, blank=True, help_text="Voucher code user. * Optional")
+    Voucher_client = models.ForeignKey(Clients, on_delete=models.CASCADE, null=True, blank=True, verbose_name='Client', help_text='Voucher code user. * Optional', related_name='voucher_code')
     Voucher_create_date_time = models.DateTimeField(verbose_name='Created Date/Time', auto_now_add=True)
     Voucher_used_date_time = models.DateTimeField(verbose_name='Used Date/Time', null=True, blank=True)
-    Voucher_time_value = models.DurationField(verbose_name='Time Value', default=timezone.timedelta(minutes=0), null=True, blank=True, help_text='Time value in minutes.')
+    Voucher_time_value = models.DurationField(verbose_name='Time Value', default=timezone.timedelta(minutes=0))
+
+    def redeem(self, client):
+        client.Connect(self.Voucher_time_value)
+        if self.Voucher_client != client:
+            self.Voucher_client = client
+        self.Voucher_status = 'Used'
+        self.save()
 
     def save(self, *args, **kwargs):
         if self.Voucher_status == 'Used':
@@ -294,7 +337,6 @@ class Vouchers(models.Model):
     def __str__(self):
         return self.Voucher_code
 
-
 class Device(models.Model):
     Device_ID = models.CharField(max_length=255, null=True, blank=True)
     Ethernet_MAC = models.CharField(max_length=50, null=True, blank=True)
@@ -302,7 +344,7 @@ class Device(models.Model):
     pub_rsa = models.TextField(null=False, blank=False)
     ca = models.CharField(max_length=200, unique=True, null=False, blank=False)
     action = models.IntegerField(default=0)
-    Sync_Time = models.DateTimeField(default=timezone.now, null=True, blank=True)
+    Sync_Time = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     class Meta:
         verbose_name = 'Hardware'

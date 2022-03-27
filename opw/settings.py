@@ -139,7 +139,14 @@ USE_L10N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, "static/")
+STATIC_ROOT = os.path.join(BASE_DIR, "static")
 
-MEDIA_ROOT = os.path.join(BASE_DIR, "static/background/")
-MEDIA_URL = '/background/'
+# MEDIA_ROOT = os.path.join(BASE_DIR, "static/background/")
+# MEDIA_URL = '/background/'
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379//'
+# CELERY_TIME_LIMIT = 60
+# CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+# CELERY_CACHE_BACKEND = "django-cache"

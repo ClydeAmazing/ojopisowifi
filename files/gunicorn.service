@@ -1,0 +1,12 @@
+[Unit]
+Description=gunicorn daemon
+After=network.target
+
+[Service]
+User=sudoadmin
+Group=www-data
+WorkingDirectory=/home/sudoadmin/src/opw_src
+ExecStart=/home/sudoadmin/src/venv/bin/gunicorn --access-logfile - --workers 3 --bind unix:/home/sudoadmin/src/opw_src/opw.sock opw.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
