@@ -195,34 +195,45 @@ class Portal(View):
                     client = models.Clients.objects.get(MAC_Address=mac)
                     pause_resume_flg = settings['pause_resume_flg']
 
-                    if pause_resume_flg:
-                        if action == 'pause':
-                            pause_resume_enable_time = settings['pause_resume_enable_time']
-                            client_time = timedelta.total_seconds(client.running_time)
+                    if not pause_resume_flg:
+                        resp = api_response(700)
+                        messages.error(request, resp['description'])
 
-                            if client_time > pause_resume_enable_time:
-                                client.Pause()
-                                messages.success(request, 'Internet connection paused. Resume when you are ready.')
+                        return redirect('app:portal')
+                    
+                    if action == 'pause':
+                        pause_resume_enable_time = settings['pause_resume_enable_time']
+                        client_time = timedelta.total_seconds(client.running_time)
 
-                            else:
-                                # TODO: Provide a proper message
-                                messages.error(request, 'Pause is not allowed.')
+                        if client_time > pause_resume_enable_time:
+                            client.Pause()
+                            messages.success(request, 'Internet connection paused. Resume when you are ready.')
 
-                        elif action == 'resume':
-                            client.Connect()
-                            messages.success(request, 'Internet connection resumed. Enjoy browsing the internet.')
                         else:
-                            resp = api_response(700)
-                            messages.error(request, resp['description'])
+                            # TODO: Provide a proper message
+                            messages.error(request, 'Pause is not allowed.')
+
+                        return redirect('app:portal')
+
+                    elif action == 'resume':
+                        client.Connect()
+                        messages.success(request, 'Internet connection resumed. Enjoy browsing the internet.')
+
+                        return redirect('app:portal')
+                        
                     else:
                         resp = api_response(700)
                         messages.error(request, resp['description'])
+
+                        return redirect('app:portal')
 
                 except models.Clients.DoesNotExist:
                     # Maybe redirect to Opennds gateway
 
                     resp = api_response(800)
                     messages.error(request, resp['description'])
+
+                    return redirect('app:portal')
 
             if 'insert_coin' in request.POST or 'extend' in request.POST:
                 success = True
@@ -259,6 +270,8 @@ class Portal(View):
                     toggle_slot.delay(1, settings['slot_light_pin'])
 
                     messages.success(request, 'Insert coin')
+                
+                return redirect('app:portal')
 
             if 'connect' in request.POST:
                 try:
@@ -285,6 +298,8 @@ class Portal(View):
                     resp = api_response(700)
                     messages.error(request, resp['description'])
 
+                return redirect('app:portal')
+
             if 'generate' in request.POST:
                 try:
                     client = models.Clients.objects.get(MAC_Address=mac)
@@ -307,11 +322,11 @@ class Portal(View):
                 except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):
                     resp = api_response(700)
                     messages.error(request, resp['description'])
+
+                return redirect('app:portal')
                     
         else:
             return redirect(settings['opennds_gateway'])
-
-        return redirect('app:portal')
 
 class Redeem(View):
     def post(self, request):
