@@ -18,6 +18,9 @@ from base64 import b64decode
 
 local_ip = ['::1', '127.0.0.1', '10.0.0.1']
 
+def is_ajax(request):
+    return request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest'
+
 def getClientInfo(ip, mac, fas):
     info = dict()
 
@@ -355,7 +358,7 @@ class Pay(APIView):
 
 class Commit(View):
     def get(self, request):
-        if not request.is_ajax():
+        if not is_ajax(request):
             raise Http404("Page not found")
         else:
             data = dict()
@@ -392,7 +395,7 @@ class Commit(View):
 
 class GenerateRC(View):
     def post(self, request):
-        if not request.is_ajax() and not request.user.is_authenticated:
+        if not is_ajax(request) and not request.user.is_authenticated:
             raise Http404("Page not found")
         if not cc():
             response = dict()
@@ -404,7 +407,7 @@ class GenerateRC(View):
 
 class ActivateDevice(View):
     def post(self, request):
-        if not request.is_ajax and not request.user.is_authenticated:
+        if not is_ajax(request) and not request.user.is_authenticated:
             raise Http404("Page not found")
         
         ak = request.POST.get('activation_key', None)
