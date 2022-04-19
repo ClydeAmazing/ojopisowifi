@@ -163,7 +163,7 @@ def sweep():
                     upload_rate = global_upload_rate
                     download_rate = global_download_rate
 
-                cmd = ['sudo', 'ndsctl', 'auth', client, str(0), str(upload_rate), str(download_rate)]
+                cmd = ['sudo', 'ndsctl', 'auth', client, str(0), str(upload_rate), str(download_rate), str(0), str(0)]
                 ndsctl_res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
                 if not ndsctl_res.stderr:
