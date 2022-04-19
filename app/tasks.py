@@ -150,6 +150,7 @@ def sweep():
 
             all_connected_clients = set(connected_clients).union(whitelisted_clients)
             for_auth_clients = set(preauth_clients).intersection(all_connected_clients)
+            # for_auth_clients = set(all_connected_clients).difference(connected_clients)
             for_deauth_clients = set(auth_clients).difference(all_connected_clients)
 
             # Authentication
@@ -180,3 +181,64 @@ def sweep():
             pass
 
     send_push_notif.delay()
+
+@shared_task
+def test_sweep():
+    models.Device.objects.get(pk=1).save()
+
+    clients = models.Clients.objects.all()
+
+    for client in clients:
+        if client.Connection_Status == 'Disconnected':
+            expire_datetime = client.Expire_On if client.Expire_On else client.Date_Created
+            diff = timezone.now() - expire_datetime
+
+            if diff > timedelta(minutes=client.Settings.Inactive_Timeout):
+                client.delete()
+
+    ndsctl_res = subprocess.run(['sudo', 'ndsctl', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if not ndsctl_res.stderr:
+        try:
+            ndsctl_response = ast.literal_eval(ndsctl_res.stdout.decode('utf-8'))
+            ndsctl_clients = ndsctl_response['clients']
+
+            preauth_clients = []
+            auth_clients = []
+
+            for ndsctl_client in ndsctl_clients:
+                client_status = ndsctl_clients[ndsctl_client]['state']
+                if client_status == 'Preauthenticated':
+                    preauth_clients.append(ndsctl_client)
+                elif client_status == 'Authenticated':
+                    auth_clients.append(ndsctl_client)
+
+            connected_client_list = {
+                c.MAC_Address:{
+                    'Upload_Rate': c.Upload_Rate,
+                    'Download_Rate': c.Download_Rate,
+                }
+                for c in clients if c.Connection_Status == 'Connected'
+            }
+
+            whitelists = models.Whitelist.objects.all()
+            network_settings = models.Network.objects.get(pk=1)
+
+            connected_clients = [c for c in connected_client_list]
+            whitelisted_clients = [c.MAC_Address for c in whitelists]
+
+            global_upload_rate = network_settings.Upload_Rate
+            global_download_rate = network_settings.Download_Rate
+
+            all_connected_clients = set(connected_clients).union(whitelisted_clients)
+            # for_auth_clients = set(preauth_clients).intersection(all_connected_clients)
+            for_auth_clients = set(all_connected_clients).difference(connected_clients)
+            for_deauth_clients = set(auth_clients).difference(all_connected_clients)
+
+            print('For auth clients:')
+            print(for_auth_clients)
+
+            print('For deauth clients')
+            print(for_deauth_clients)
+
+        except (SyntaxError, ValueError):
+            pass
