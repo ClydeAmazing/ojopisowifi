@@ -6,7 +6,15 @@ from django.db.models import Sum
 from django.db.models.functions import TruncMonth, TruncDate
 from app import models
 from app.opw import cc, grc
+import subprocess, ast
 
+
+def get_NDS_status():
+	ndsctl_res = subprocess.run(['sudo', 'ndsctl', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	if ndsctl_res.stderr:
+		return False
+	
+	return ast.literal_eval(ndsctl_res.stdout.decode('utf-8'))
 class DashboardDetails(APIView):
 	def post(self, request, format=None):
 		action = request.data.get("action", None)
@@ -92,6 +100,9 @@ class DashboardDetails(APIView):
 
 		info['connected_count'] = connected_count
 		info['disconnected_count'] = disconnected_count
+
+		# test ndsctl response
+		info['ndsctl'] = get_NDS_status()
 
 		try:
 			device = models.Device.objects.get(pk=1)

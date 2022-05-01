@@ -160,22 +160,45 @@
                     </div>
                     <div class="card-body py-2">
                         <div class="row">
-                        <div class="col-lg-6 mb-2">
-                            <button type="button" class="btn btn-warning w-100" data-toggle="modal" data-target="#reboot-modal">
-                                <i class="fa fa-undo"></i> Reboot Device
-                            </button>
-                        </div>
-                        <div class="col-lg-6">
-                            <button type="button" class="btn btn-danger w-100" data-toggle="modal" data-target="#poweroff-modal">
-                                <i class="fas fa-power-off"></i> Power Off
-                            </button>
-                        </div>
+                            <div class="col-lg-6 mb-2">
+                                <button type="button" class="btn btn-warning w-100" data-toggle="modal" data-target="#reboot-modal">
+                                    <i class="fa fa-undo"></i> Reboot Device
+                                </button>
+                            </div>
+                            <div class="col-lg-6">
+                                <button type="button" class="btn btn-danger w-100" data-toggle="modal" data-target="#poweroff-modal">
+                                    <i class="fas fa-power-off"></i> Power Off
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <!-- /.card-body -->
                     <!-- <div class="card-footer bg-transparent">
                     </div> -->
                     <!-- /.card-footer -->
+                </div>
+
+                <div class="card">
+                    <div class="card-header border-0">
+                        <h3 class="card-title">
+                            <i class="fas fa-th mr-1"></i>
+                            NDSCTL
+                        </h3>
+
+                        <div class="card-tools">
+                            <button type="button" class="btn bg-info btn-sm" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button type="button" class="btn bg-info btn-sm" data-card-widget="remove">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="row" id="ndsctl">
+                            
+                        </div>
+                    </div>
                 </div>
             </div>    
 
@@ -191,6 +214,7 @@
             var current_users = document.getElementById('box_current_users');
             var total_users = document.getElementById('box_total_users');
             var sales = document.getElementById('box_sales');
+            var ndsctl = document.getElementById('ndsctl');
             var new_devices = document.getElementById('box_new_devices');
             var activation_status_box = document.getElementById('activation_status_box');
             var activation_card = document.getElementById('activation_card')
@@ -291,6 +315,7 @@
                         total_sales += item[1]
                     })
                     sales.innerText = total_sales
+                    ndsctl.innerText = result.ndsctl
 
                     addData(salesGraphChart, sales_trend_labels, sales_trend_values)
 
