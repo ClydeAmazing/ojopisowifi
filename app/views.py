@@ -4,7 +4,6 @@ from django.shortcuts import render, redirect
 from django.views import View
 from django.utils import timezone
 from django.db.models import F
-from django.contrib import messages
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
@@ -15,14 +14,12 @@ from app.tasks import toggle_slot
 from base64 import b64decode
 # import pyotp
 
-
-local_ip = ['::1', '127.0.0.1', '10.0.0.1']
-
 def is_ajax(request):
     return request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest'
 
 def getClientInfo(ip, mac, fas):
     info = dict()
+    whitelisted_flg = False
 
     if models.Whitelist.objects.filter(MAC_Address=mac).exists():
         whitelisted_flg = True
@@ -33,8 +30,6 @@ def getClientInfo(ip, mac, fas):
         vouchers = None
 
     else:
-        whitelisted_flg = False
-
         default_values = {
             'IP_Address': ip,
             'FAS_Session': fas,
@@ -133,200 +128,179 @@ def generatePayload(fas):
         if '=' in data:
             parsed_data = data.split('=')
             payload[parsed_data[0]] = None if parsed_data[1] == '(null)' else parsed_data[1]
-    return payload
+
+    return payload if all([a in payload for a in ['clientip', 'clientmac']]) else False
 
 class Portal(View):
     template_name = 'captive.html'
 
     def get(self, request, fas=None):
-        ip = None
-        mac = None
         settings = getSettings()
 
         if fas:
-            try:
-                client = models.Clients.objects.get(FAS_Session=fas)
-            except models.Clients.DoesNotExist:
-                client = None
-
             payload = generatePayload(fas)
-            if 'clientip' in payload and 'clientmac' in payload:
-
-                if client and client.MAC_Address != payload['clientmac']:
-                    return redirect(settings['opennds_gateway'])
-
-                request.session['ip_address'] = payload['clientip']
-                request.session['mac_address'] = payload['clientmac']
-                request.session['fas'] = fas
-                request.session['hid'] = payload['hid']
-
-                ip = payload['clientip']
-                mac = payload['clientmac']
-
-                return redirect('app:portal')
-            else:
-                return redirect(settings['opennds_gateway'])
         else:
-            mac_address = request.session.get('mac_address', None)
-            ip_address = request.session.get('ip_address', None)
             fas_session = request.session.get('fas', None)
 
-            if mac_address and ip_address and fas_session:
-                ip = ip_address
-                mac = mac_address
-                fas = fas_session
-            else:
-                return redirect(settings['opennds_gateway'])
+            if not fas_session:
+                 return redirect(settings['opennds_gateway'])
+            
+            payload = generatePayload(fas_session)
 
-        info = getClientInfo(ip, mac, fas)
+        if not payload:
+            return redirect(settings['opennds_gateway'])
+        
+        ip = payload['clientip']
+        mac = payload['clientmac']
+            
+        info = getClientInfo(ip, mac, fas_session)
         context = {**settings, **info}
         return render(request, self.template_name, context=context)
 
     def post(self, request, fas=None):
-        mac = request.session.get('mac_address', None)
-        ip = request.session.get('ip_address', None)
-        hid = request.session.get('hid', None)
+        fas_session = request.session.get('fas', None)
+
         settings = getSettings()
 
-        if mac and ip and hid:
-            if 'pause_resume' in request.POST:
-                action = request.POST['pause_resume']
-                try:
-                    client = models.Clients.objects.get(MAC_Address=mac)
-                    pause_resume_flg = settings['pause_resume_flg']
+        if not fas_session:
+            return redirect(settings['opennds_gateway'])
 
-                    if not pause_resume_flg:
-                        resp = api_response(700)
-                        messages.error(request, resp['description'])
+        payload = generatePayload(fas_session)
+        if not payload:
+            return redirect(settings['opennds_gateway'])
 
-                        return redirect('app:portal')
-                    
-                    if action == 'pause':
-                        pause_resume_enable_time = settings['pause_resume_enable_time']
-                        client_time = timedelta.total_seconds(client.running_time)
+        mac = payload['clientmac']
+            
+        if 'pause_resume' in request.POST:
+            action = request.POST['pause_resume']
+            try:
+                client = models.Clients.objects.get(MAC_Address=mac)
+                pause_resume_flg = settings['pause_resume_flg']
 
-                        if client_time > pause_resume_enable_time:
-                            client.Pause()
-                            messages.success(request, 'Internet connection paused. Resume when you are ready.')
+                if not pause_resume_flg:
+                    resp = api_response(700)
+                    messages.error(request, resp['description'])
 
-                        else:
-                            # TODO: Provide a proper message
-                            messages.error(request, 'Pause is not allowed.')
+                    return redirect('app:portal')
+                
+                if action == 'pause':
+                    pause_resume_enable_time = settings['pause_resume_enable_time']
+                    client_time = timedelta.total_seconds(client.running_time)
 
-                        return redirect('app:portal')
+                    if client_time > pause_resume_enable_time:
+                        client.Pause()
+                        messages.success(request, 'Internet connection paused. Resume when you are ready.')
 
-                    elif action == 'resume':
-                        client.Connect()
-                        messages.success(request, 'Internet connection resumed. Enjoy browsing the internet.')
-
-                        return redirect('app:portal')
-                        
                     else:
-                        resp = api_response(700)
-                        messages.error(request, resp['description'])
+                        # TODO: Provide a proper message
+                        messages.error(request, 'Pause is not allowed.')
 
-                        return redirect('app:portal')
+                    return redirect('app:portal')
 
-                except models.Clients.DoesNotExist:
-                    # Maybe redirect to Opennds gateway
+                elif action == 'resume':
+                    client.Connect()
+                    messages.success(request, 'Internet connection resumed. Enjoy browsing the internet.')
 
-                    resp = api_response(800)
+                    return redirect('app:portal')
+                    
+                else:
+                    resp = api_response(700)
                     messages.error(request, resp['description'])
 
                     return redirect('app:portal')
 
-            if 'insert_coin' in request.POST or 'extend' in request.POST:
-                success = True
-                try:
-                    client = models.Clients.objects.get(MAC_Address=mac)
-                    
-                    # TODO: Make this coinslot assignment dynamic
-                    coinslot = models.CoinSlot.objects.get(id=1)
+            except models.Clients.DoesNotExist:
+                # Maybe redirect to Opennds gateway
 
-                    if not coinslot.Client or coinslot.Client == client: 
+                resp = api_response(800)
+                messages.error(request, resp['description'])
+
+                return redirect('app:portal')
+
+        if 'insert_coin' in request.POST or 'extend' in request.POST:
+            success = True
+            try:
+                client = models.Clients.objects.get(MAC_Address=mac)
+                
+                # TODO: Make this coinslot assignment dynamic
+                coinslot = models.CoinSlot.objects.get(id=1)
+
+                if not coinslot.Client or coinslot.Client == client: 
+                    coinslot.Client = client
+                    coinslot.save()
+                else:
+                    time_diff = timedelta.total_seconds(timezone.now()-coinslot.Last_Updated)
+                    if timedelta(seconds=time_diff).total_seconds() > settings['slot_timeout']:
                         coinslot.Client = client
                         coinslot.save()
                     else:
-                        time_diff = timedelta.total_seconds(timezone.now()-coinslot.Last_Updated)
-                        if timedelta(seconds=time_diff).total_seconds() > settings['slot_timeout']:
-                            coinslot.Client = client
-                            coinslot.save()
-                        else:
-                            resp = api_response(600)
-                            messages.error(request, resp['description'])
-                            success = False
+                        resp = api_response(600)
+                        messages.error(request, resp['description'])
+                        success = False
 
-                except models.Clients.DoesNotExist:
-                    resp = api_response(500)
-                    messages.error(request, resp['description'])
-                    success = False
+            except models.Clients.DoesNotExist:
+                resp = api_response(500)
+                messages.error(request, resp['description'])
+                success = False
 
-                if success:
-                    coin_queue, created = models.CoinQueue.objects.get_or_create(Client=client)
-                    if not created:
-                        coin_queue.save()
+            if success:
+                coin_queue, created = models.CoinQueue.objects.get_or_create(Client=client)
+                if not created:
+                    coin_queue.save()
 
-                    # Activate coinslot
-                    toggle_slot.delay(1, settings['slot_light_pin'])
+                # Activate coinslot
+                toggle_slot.delay(1, settings['slot_light_pin'])
 
-                    messages.success(request, 'Insert coin')
+                messages.success(request, 'Insert coin')
+            
+            return redirect('app:portal')
+
+        if 'connect' in request.POST:
+            try:
+                client = models.Clients.objects.get(MAC_Address=mac)
+
+                coin_queue = models.CoinQueue.objects.get(Client=client)
+                total_coins = coin_queue.Total_Coins
+                coin_queue.Claim_Queue()
+
+                client.expire_slot()
+
+                # Deactivate coinslot
+                toggle_slot.delay(0, settings['slot_light_pin'])
+
+                if total_coins > 0:
+                    messages.success(request, f'₱{str(total_coins)} credited successfully. Enjoy Browsing')
+
+            except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):
+                resp = api_response(700)
+                messages.error(request, resp['description'])
+
+            return redirect('app:portal')
+
+        if 'generate' in request.POST:
+            try:
+                client = models.Clients.objects.get(MAC_Address=mac)
+                coin_queue = models.CoinQueue.objects.get(Client=client)
+                total_time = coin_queue.Total_Time
                 
-                return redirect('app:portal')
+                voucher = models.Vouchers()
+                voucher.Voucher_status = 'Not Used'
+                voucher.Voucher_client = client
+                voucher.Voucher_time_value = total_time
+                voucher.save()
 
-            if 'connect' in request.POST:
-                try:
-                    client = models.Clients.objects.get(MAC_Address=mac)
+                coin_queue.delete()
 
-                    coin_queue = models.CoinQueue.objects.get(Client=client)
-                    total_coins = coin_queue.Total_Coins
-                    coin_queue.Claim_Queue()
+                client.expire_slot()
+                # Deactivate coinslot
+                toggle_slot.delay(0, settings['slot_light_pin'])
 
-                    client.expire_slot()
+                messages.success(request, f'Voucher code {voucher.Voucher_code} successfully generated. The new code is added to your voucher list.')
+            except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):
+                resp = api_response(700)
+                messages.error(request, resp['description'])
 
-                    # Deactivate coinslot
-                    toggle_slot.delay(0, settings['slot_light_pin'])
-
-                    if total_coins > 0:
-                        messages.success(request, f'₱{str(total_coins)} credited successfully. Enjoy Browsing')
-                        gateway = settings['opennds_gateway']
-                        auth_dir = 'opennds_auth'
-
-                        nds_auth_url = f"{gateway}/{auth_dir}"
-                        return redirect(nds_auth_url, )
-
-                except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):
-                    resp = api_response(700)
-                    messages.error(request, resp['description'])
-
-                return redirect('app:portal')
-
-            if 'generate' in request.POST:
-                try:
-                    client = models.Clients.objects.get(MAC_Address=mac)
-                    coin_queue = models.CoinQueue.objects.get(Client=client)
-                    total_time = coin_queue.Total_Time
-                    
-                    voucher = models.Vouchers()
-                    voucher.Voucher_status = 'Not Used'
-                    voucher.Voucher_client = client
-                    voucher.Voucher_time_value = total_time
-                    voucher.save()
-
-                    coin_queue.delete()
-
-                    client.expire_slot()
-                    # Deactivate coinslot
-                    toggle_slot.delay(0, settings['slot_light_pin'])
-
-                    messages.success(request, f'Voucher code {voucher.Voucher_code} successfully generated. The code is added to your voucher list.')
-                except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):
-                    resp = api_response(700)
-                    messages.error(request, resp['description'])
-
-                return redirect('app:portal')
-                    
-        else:
-            return redirect(settings['opennds_gateway'])
+            return redirect('app:portal')  
 
 class Redeem(View):
     def post(self, request):
