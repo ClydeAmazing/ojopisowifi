@@ -269,6 +269,6 @@ admin.site.register(models.PushNotifications, PushNotificationsAdmin)
 #     settings = models.Settings.objects.get(pk=1)
 #     return settings.Hotspot_Name
 
-# admin.AdminSite.site_header = admin_name()
-# admin.AdminSite.site_title = admin_name()
-admin.AdminSite.index_template = 'admin/index2.html'
+admin.AdminSite.site_header = 'OJO Pisowifi'
+admin.AdminSite.site_title = 'OJO'
+# admin.AdminSite.index_template = 'admin/index2.html'
