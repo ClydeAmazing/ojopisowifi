@@ -141,12 +141,12 @@ class Portal(View):
             payload = generatePayload(fas)
             request.session['fas'] = fas
         else:
-            fas_session = request.session.get('fas', None)
+            fas = request.session.get('fas', None)
 
-            if not fas_session:
+            if not fas:
                  return redirect(settings['opennds_gateway'])
             
-            payload = generatePayload(fas_session)
+            payload = generatePayload(fas)
 
         if not payload:
             return redirect(settings['opennds_gateway'])
@@ -154,7 +154,7 @@ class Portal(View):
         ip = payload['clientip']
         mac = payload['clientmac']
             
-        info = getClientInfo(ip, mac, fas_session)
+        info = getClientInfo(ip, mac, fas)
         context = {**settings, **info}
 
         return render(request, self.template_name, context=context)
