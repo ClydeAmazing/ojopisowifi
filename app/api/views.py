@@ -102,11 +102,11 @@ class DashboardDetails(APIView):
 		info['disconnected_count'] = disconnected_count
 
 		# test ndsctl response
-		info['ndsctl'] = get_NDS_status()
+		# info['ndsctl'] = get_NDS_status()
 
 		try:
 			device = models.Device.objects.get(pk=1)
-			cc_res = cc()
+			cc_res = False
 			if cc_res or request.user.is_superuser:
 				info['message'] = None
 			else:

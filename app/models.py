@@ -233,7 +233,7 @@ class Rates(models.Model):
         verbose_name_plural = "Rates"
 
     def __str__(self):
-        return 'Rate: ' + str(self.Denom)
+        return str(self.Denom)
 
 class CoinQueue(models.Model):
     Client = models.OneToOneField(Clients, on_delete=models.CASCADE, primary_key=True, related_name='coin_queue')

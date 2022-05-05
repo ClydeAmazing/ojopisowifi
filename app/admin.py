@@ -1,7 +1,16 @@
 from django.contrib import admin, messages
+from django.core import serializers
+from django.core.serializers.json import DjangoJSONEncoder
+from django.shortcuts import redirect
+from django.template.response import TemplateResponse
+from django.http import HttpResponse
+from django.db.models import Sum
+from django.db.models.functions import TruncMonth, TruncDate
 from django.urls import path
 from app import models, forms
-from app.opw import cc
+from app.opw import cc, grc
+
+from django.contrib.auth.models import User, Group
 
 def client_check(request):
     if request.user.is_superuser:
@@ -9,6 +18,100 @@ def client_check(request):
     else:
         return cc()
 
+
+class MyAdminSite(admin.AdminSite):
+
+    def dashboard_data(self, device):
+        info = dict()
+        ledger = models.Ledger.objects.all()
+        sales_trend = ledger.annotate(Period=TruncDate('Date')).values('Period').annotate(Sales=Sum('Denomination')).values_list('Period', 'Sales')
+
+        connected_count = 0
+        disconnected_count = 0
+        
+        clients = models.Clients.objects.all()
+        for client in clients:
+            if client.Connection_Status == 'Connected':
+                connected_count += 1
+            else:
+                disconnected_count += 1
+
+        total_sales = ledger.aggregate(Sales=Sum('Denomination'))['Sales'] or 0
+
+        info['connected_count'] = connected_count
+        info['disconnected_count'] = disconnected_count
+        info['total_count'] = connected_count + disconnected_count
+        info['total_sales'] = total_sales
+        info['sales_trend'] = list(sales_trend)
+
+        # test ndsctl response
+        # info['ndsctl'] = get_NDS_status()
+
+        cc_res = cc()
+        if not cc_res:
+            info['license_status'] = 'Not Activated'
+            info['license'] = None
+        else:
+            info['license_status'] = 'Activated'
+            info['license'] = device.Device_ID
+        
+        return info
+
+    def index(self, request, extra_context=None):
+        device = models.Device.objects.get(pk=1)
+        extra_context = {
+            'dashboard_data': self.dashboard_data(device)
+        }
+
+        if request.method == 'POST':
+            if 'reset' in request.POST:
+                models.Ledger.objects.all().delete()
+                messages.success(request, 'Ledger is now cleared.')
+            elif 'poweroff' in request.POST:
+                device.action = 1
+                device.save()
+            elif 'reboot' in request.POST:
+                device.action = 2
+                device.save()
+            elif 'generate' in request.POST:
+                if not cc():
+                    rc = grc()
+                    request.session['registration_key'] = rc.decode('utf-8')
+                    messages.success(request, 'Registration code generated successfully.')
+                else:
+                    messages.warning(request, 'Device already activated.')
+            elif all(a in request.POST for a in ['activate', 'key']):
+                print(request.POST)
+                key = request.POST.get('key')
+                result = cc(key)
+                if result:
+                    device.Device_ID = key
+                    device.save()
+                    request.session['activation'] = 'success'
+                else:
+                    request.session['activation'] = 'failed'
+
+            return redirect('admin:index')
+
+        if device.action == 1:
+            return HttpResponse('Device is powering off..')
+        elif device.action == 2:
+            return HttpResponse('Device is rebooting..')
+
+        registration_key = request.session.get('registration_key', None)
+        if registration_key:
+            extra_context['registration_key'] = registration_key
+            del request.session['registration_key']
+
+        activation_request = request.session.get('activation', None)
+        if activation_request:
+            extra_context['activation'] = activation_request
+            del request.session['activation']
+
+        return super(MyAdminSite, self).index(request, extra_context=extra_context)
+
+
+ojo_admin = MyAdminSite()
 
 class Singleton(admin.ModelAdmin):
     change_form_template  = 'singleton_change_form.html'
@@ -34,7 +137,6 @@ class Singleton(admin.ModelAdmin):
     #     self.message_user(request, msg)
     #     return HttpResponseRedirect("../../")
 
-
 class ClientsAdmin(admin.ModelAdmin):
     form = forms.ClientsForm
     list_display = ('IP_Address', 'MAC_Address', 'Device_Name', 'Connection_Status', 'Time_Left', 'running_time')
@@ -56,6 +158,7 @@ class ClientsAdmin(admin.ModelAdmin):
                 messages.add_message(request, messages.SUCCESS, 'Device {} is now connected.'. format(device_name))
             else:
                 messages.add_message(request, messages.WARNING, 'Unable to connect device {}'. format(device_name))
+
 
     def Disconnect(self, request, queryset):
         for obj in queryset:
@@ -86,14 +189,12 @@ class ClientsAdmin(admin.ModelAdmin):
             else:
                 messages.add_message(request, messages.WARNING, 'Device {} was already added on the whitelisted devices'.format(device_name))
 
-
 class WhitelistAdmin(admin.ModelAdmin):
     list_display = ('MAC_Address', 'Device_Name')
 
     def changelist_view(self, request, extra_context=None):
         extra_context = {'title': 'Whitelisted Devices'}
         return super(WhitelistAdmin, self).changelist_view(request, extra_context=extra_context)
-
 
 class CoinSlotAdmin(admin.ModelAdmin):
     list_display = ('Edit', 'Slot_ID', 'Slot_Desc')
@@ -105,7 +206,6 @@ class CoinSlotAdmin(admin.ModelAdmin):
     # def has_delete_permission(self, *args, **kwargs):
     #     return False
 
-
 class LedgerAdmin(admin.ModelAdmin):
     list_display = ('Date', 'Client', 'Denomination', 'Slot_No')
     list_filter = ('Client', 'Date')
@@ -114,16 +214,9 @@ class LedgerAdmin(admin.ModelAdmin):
         extra_context = {'title': 'Transaction Ledger'}
         return super(LedgerAdmin, self).changelist_view(request, extra_context=extra_context)
 
-
 class SettingsAdmin(Singleton, admin.ModelAdmin):
     form = forms.SettingsForm
     list_display = ('Hotspot_Name', 'Hotspot_Address', 'Slot_Timeout', 'Rate_Type', 'Base_Value', 'Inactive_Timeout', 'Coinslot_Pin', 'Light_Pin')
-    
-    def background_preview(self, obj):
-        return obj.background_preview
-
-    background_preview.short_description = 'Background Preview'
-    background_preview.allow_tags = True
 
     def changelist_view(self, request, extra_context=None):
         extra_context = {'title': 'Wifi Settings'}
@@ -145,7 +238,6 @@ class SettingsAdmin(Singleton, admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         messages.add_message(request, messages.INFO, 'Wifi Settings updated successfully.')
         super(SettingsAdmin, self).save_model(request, obj, form, change)
-
 
 class NetworkAdmin(Singleton, admin.ModelAdmin):
     form = forms.NetworkForm
@@ -173,13 +265,11 @@ class NetworkAdmin(Singleton, admin.ModelAdmin):
         messages.add_message(request, messages.INFO, 'Global Network Settings updated successfully.')
         super(NetworkAdmin, self).save_model(request, obj, form, change)
 
-
 class CoinQueueAdmin(admin.ModelAdmin):
     list_display = ('Client', 'Total_Coins', 'Total_Time')
 
-
 class RatesAdmin(admin.ModelAdmin):
-    list_display = ('Edit', 'Denom', 'Pulse', 'Minutes')
+    list_display = ('Edit', 'Denom', 'Minutes')
     field_order = ('Minutes', 'Denom')
 
     def changelist_view(self, request, extra_context=None):
@@ -197,9 +287,17 @@ class RatesAdmin(admin.ModelAdmin):
         res = client_check(request)
         return res
 
+    def message_user(self, *args):
+        pass
+
+    def save_model(self, request, obj, form, change):
+        messages.add_message(request, messages.INFO, 'Wifi Rates updated successfully.')
+        super(RatesAdmin, self).save_model(request, obj, form, change)
 
 class DeviceAdmin(Singleton, admin.ModelAdmin):
     list_display = ('Device_SN', 'Ethernet_MAC')
+    readonly_fields = ('Ethernet_MAC', 'Device_SN', 'pub_rsa', 'ca')
+    # exclude = ('action',)
 
     def has_add_permission(self, *args, **kwargs):
         return not models.Device.objects.exists()
@@ -253,22 +351,20 @@ class PushNotificationsAdmin(Singleton, admin.ModelAdmin):
         messages.add_message(request, messages.INFO, 'Push Notification Settings updated successfully.')
         super(PushNotificationsAdmin, self).save_model(request, obj, form, change)
 
-admin.site.register(models.CoinSlot, CoinSlotAdmin)
-admin.site.register(models.Clients, ClientsAdmin)
-admin.site.register(models.Whitelist, WhitelistAdmin)
-admin.site.register(models.Ledger, LedgerAdmin)
-admin.site.register(models.CoinQueue, CoinQueueAdmin)
-admin.site.register(models.Settings, SettingsAdmin)
-admin.site.register(models.Network, NetworkAdmin)
-admin.site.register(models.Rates, RatesAdmin)
-admin.site.register(models.Device, DeviceAdmin)
-admin.site.register(models.Vouchers, VouchersAdmin)
-admin.site.register(models.PushNotifications, PushNotificationsAdmin)
+ojo_admin.register(models.Clients, ClientsAdmin)
+ojo_admin.register(models.Whitelist, WhitelistAdmin)
+ojo_admin.register(User)
+ojo_admin.register(Group)
+ojo_admin.register(models.CoinSlot, CoinSlotAdmin)
+ojo_admin.register(models.Ledger, LedgerAdmin)
+ojo_admin.register(models.Settings, SettingsAdmin)
+ojo_admin.register(models.Network, NetworkAdmin)
+ojo_admin.register(models.CoinQueue, CoinQueueAdmin)
+ojo_admin.register(models.Rates, RatesAdmin)
+ojo_admin.register(models.Device, DeviceAdmin)
+ojo_admin.register(models.Vouchers, VouchersAdmin)
+ojo_admin.register(models.PushNotifications, PushNotificationsAdmin)
 
-# def admin_name():
-#     settings = models.Settings.objects.get(pk=1)
-#     return settings.Hotspot_Name
-
-admin.AdminSite.site_header = 'OJO Pisowifi'
-admin.AdminSite.site_title = 'OJO'
-# admin.AdminSite.index_template = 'admin/index2.html'
+ojo_admin.site_header = 'OJO Pisowifi'
+ojo_admin.site_title = 'OJO'
+ojo_admin.index_template = 'admin/ojo_index.html'

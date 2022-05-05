@@ -139,6 +139,7 @@ class Portal(View):
 
         if fas:
             payload = generatePayload(fas)
+            request.session['fas'] = fas
         else:
             fas_session = request.session.get('fas', None)
 
@@ -155,6 +156,7 @@ class Portal(View):
             
         info = getClientInfo(ip, mac, fas_session)
         context = {**settings, **info}
+
         return render(request, self.template_name, context=context)
 
     def post(self, request, fas=None):
