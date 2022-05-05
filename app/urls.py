@@ -11,6 +11,4 @@ urlpatterns = [
     path('redeem', Redeem.as_view(), name="redeem"),
     # path('pay', Pay.as_view()),
     path('commit', Commit.as_view()),
-    path('gen_rc', GenerateRC.as_view()),
-    path('activate', ActivateDevice.as_view()),
 ]
