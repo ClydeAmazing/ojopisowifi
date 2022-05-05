@@ -306,16 +306,17 @@ class Portal(View):
 
 class Redeem(View):
     def post(self, request):
+        fas = request.session.get('fas', None)
         voucher_code = request.POST.get('voucher_code', None)
-        mac = request.session.get('mac_address', None)
+        
         settings = getSettings()
 
-        if mac and voucher_code:
+        if fas and voucher_code:
             try:
                 voucher = models.Vouchers.objects.get(Voucher_code=voucher_code, Voucher_status = 'Not Used')
                 
                 try:
-                    client = models.Clients.objects.get(MAC_Address=mac)
+                    client = models.Clients.objects.get(FAS_Session=fas)
                     voucher.redeem(client)
 
                     messages.success(request, f'Voucher code {voucher.Voucher_code} successfully redeemed!')
@@ -353,68 +354,31 @@ class Commit(View):
             raise Http404("Page not found")
         else:
             data = dict()
-            mac = request.session.get('mac_address')
-            if mac:
+            fas = request.session.get('fas')
+
+            try:
+                client = models.Clients.objects.get(FAS_Session=fas)
                 try:
-                    client = models.Clients.objects.get(MAC_Address=mac)
-                    try:
-                        is_inserting, _, slot_remaining_time = client.is_inserting_coin()
+                    is_inserting, _, slot_remaining_time = client.is_inserting_coin()
 
-                        if is_inserting:
-                            data['Status'] = 'Not Available'
-                            data['Timeout'] = slot_remaining_time
+                    if is_inserting:
+                        data['Status'] = 'Not Available'
+                        data['Timeout'] = slot_remaining_time
 
-                        else:
-                            data['Status'] = 'Available'
-                            data['Timeout'] = 0
+                    else:
+                        data['Status'] = 'Available'
+                        data['Timeout'] = 0
 
-                        queue = models.CoinQueue.objects.get(Client=client)
+                    queue = models.CoinQueue.objects.get(Client=client)
 
-                        data['Total_Coins'] = queue.Total_Coins
-                        data['Total_Time'] = int(timedelta.total_seconds(queue.Total_Time))
+                    data['Total_Coins'] = queue.Total_Coins
+                    data['Total_Time'] = int(timedelta.total_seconds(queue.Total_Time))
 
-                    except models.CoinQueue.DoesNotExist:
-                        data['Total_Coins'] = 0
-                        data['Total_Time'] = 0
+                except models.CoinQueue.DoesNotExist:
+                    data['Total_Coins'] = 0
+                    data['Total_Time'] = 0
 
-                except (models.Clients.DoesNotExist, models.CoinSlot.DoesNotExist):
-                    data['Status'] = 'Error'
-            else:
+            except (models.Clients.DoesNotExist, models.CoinSlot.DoesNotExist):
                 data['Status'] = 'Error'
 
             return JsonResponse(data)
-
-class GenerateRC(View):
-    def post(self, request):
-        if not is_ajax(request) and not request.user.is_authenticated:
-            raise Http404("Page not found")
-        if not cc():
-            response = dict()
-            rc = grc()
-            response['key'] = rc.decode('utf-8')
-            return  JsonResponse(response)
-        else:
-            return HttpResponse('Device is already activated')      
-
-class ActivateDevice(View):
-    def post(self, request):
-        if not is_ajax(request) and not request.user.is_authenticated:
-            raise Http404("Page not found")
-        
-        ak = request.POST.get('activation_key', None)
-        response = dict()
-        if ak:
-            result = cc(ak)
-            if not result:
-                response['message'] = 'Error'
-                return JsonResponse(response)
-
-            device = models.Device.objects.get(pk=1)
-            device.Device_ID = ak
-            device.save()
-
-            response['message'] = 'Success'
-            return JsonResponse(response)
-        else:
-            response['message'] = 'Error'
-            return JsonResponse(response)
