@@ -23,7 +23,7 @@ def client_check(request):
 
 class MyAdminSite(admin.AdminSite):
     def get_NDS_status(self):
-        ndsctl_res = subprocess.run(['sudo', 'ndsctl', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        ndsctl_res = subprocess.run("sudo ndsctl status | grep -e 'Version\|Uptime\|Gateway Name\|Upstream\|FAS'", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         if ndsctl_res.stderr:
             return ndsctl_res.stderr.decode('utf-8')
     
