@@ -83,9 +83,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 JAZZMIN_SETTINGS = {
-    'copyright': 'OJO PISOWifi',
+    'site_title': 'OJO',
+    'site_header': 'OJO PISOWIFI',
+    'site_brand': 'OJO PISOWIFI',
+    'copyright': 'OJO PISOWIFI',
     'show_ui_builder': False,
-    'order_with_respect_to': ['app', 'app.Clients', 'app.Whitelist', 'app.Rates', 'app.Vouchers', 'app.CoinSlot', 'app.CoinQueue', 'app.Ledger'],
+    'order_with_respect_to': ['app', 'app.Clients', 'app.Whitelist', 'app.Rates', 'app.Vouchers', 'app.CoinSlot', 'app.CoinQueue', 'app.Ledger', 'app.Hardware', 'app.Device', 'app.Network', 'app.PushNotifications', 'app.Settings'],
     'icons': {
         'app.clients': 'fas fa-users',
         'app.coinqueue': 'fas fa-coins',
@@ -117,7 +120,16 @@ JAZZMIN_UI_TWEAKS = {
     "sidebar_nav_child_indent": False,
     "sidebar_nav_compact_style": True,
     "sidebar_nav_legacy_style": False,
-    "sidebar_nav_flat_style": False
+    "sidebar_nav_flat_style": False,
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-outline-secondary",
+        "info": "btn-outline-info",
+        "warning": "btn-outline-warning",
+        "danger": "btn-outline-danger",
+        "success": "btn-success"
+    },
+    "actions_sticky_top": True,
 }
 
 REST_FRAMEWORK = {

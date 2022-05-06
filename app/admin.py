@@ -12,6 +12,8 @@ from app.opw import cc, grc
 
 from django.contrib.auth.models import User, Group
 
+import subprocess, ast
+
 def client_check(request):
     if request.user.is_superuser:
         return True
@@ -20,6 +22,13 @@ def client_check(request):
 
 
 class MyAdminSite(admin.AdminSite):
+    def get_NDS_status(self):
+        ndsctl_res = subprocess.run(['sudo', 'ndsctl', 'json'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        if ndsctl_res.stderr:
+            return ndsctl_res.stderr.decode('utf-8')
+    
+        # return ast.literal_eval(ndsctl_res.stdout.decode('utf-8'))
+        return ndsctl_res.stdout.decode('utf-8')
 
     def dashboard_data(self, device):
         info = dict()
@@ -45,7 +54,7 @@ class MyAdminSite(admin.AdminSite):
         info['sales_trend'] = list(sales_trend)
 
         # test ndsctl response
-        # info['ndsctl'] = get_NDS_status()
+        info['ndsctl'] = self.get_NDS_status()
 
         cc_res = cc()
         if not cc_res:
@@ -81,7 +90,6 @@ class MyAdminSite(admin.AdminSite):
                 else:
                     messages.warning(request, 'Device already activated.')
             elif all(a in request.POST for a in ['activate', 'key']):
-                print(request.POST)
                 key = request.POST.get('key')
                 result = cc(key)
                 if result:
@@ -353,8 +361,6 @@ class PushNotificationsAdmin(Singleton, admin.ModelAdmin):
 
 ojo_admin.register(models.Clients, ClientsAdmin)
 ojo_admin.register(models.Whitelist, WhitelistAdmin)
-ojo_admin.register(User)
-ojo_admin.register(Group)
 ojo_admin.register(models.CoinSlot, CoinSlotAdmin)
 ojo_admin.register(models.Ledger, LedgerAdmin)
 ojo_admin.register(models.Settings, SettingsAdmin)
@@ -364,7 +370,7 @@ ojo_admin.register(models.Rates, RatesAdmin)
 ojo_admin.register(models.Device, DeviceAdmin)
 ojo_admin.register(models.Vouchers, VouchersAdmin)
 ojo_admin.register(models.PushNotifications, PushNotificationsAdmin)
+ojo_admin.register(User)
+ojo_admin.register(Group)
 
-ojo_admin.site_header = 'OJO Pisowifi'
-ojo_admin.site_title = 'OJO'
 ojo_admin.index_template = 'admin/ojo_index.html'

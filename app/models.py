@@ -283,7 +283,7 @@ class Network(models.Model):
     Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify global internet download bandwidth in Kbps. 0 = unlimited bandwidth', default=0)
 
     class Meta:
-        verbose_name = 'Network'
+        verbose_name = 'Networking'
 
     def __str__(self):
         return 'Network Settings'

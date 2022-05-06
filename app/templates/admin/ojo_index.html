@@ -208,7 +208,7 @@
                     </div>
                     <div class="card-body py-2">
                         <div class="row" id="ndsctl">
-                            
+                            {{ dashboard_data.ndsctl }}
                         </div>
                     </div>
                 </div>
@@ -224,18 +224,8 @@
     <script src="/static/vendors/chart.js/Chart.min.js"></script>
     <script type="text/javascript">
         $(document).ready(function(){
-            var current_users = document.getElementById('box_current_users');
-            var total_users = document.getElementById('box_total_users');
-            var sales = document.getElementById('box_sales');
-            var ndsctl = document.getElementById('ndsctl');
-            var new_devices = document.getElementById('box_new_devices');
-            var activation_status_box = document.getElementById('activation_status_box');
-            var activation_card = document.getElementById('activation_card')
-            // var token = $('input[name=csrfmiddlewaretoken]').val();
-            var dashboard_data
             var sales_trend_labels = []
             var sales_trend_values = []
-            var total_sales = 0
             var sales_trend = JSON.parse(document.getElementById('sales_trend').textContent);
 
             // Sales Trend
@@ -307,8 +297,7 @@
 
             sales_trend.forEach(function(item){
                         sales_trend_labels.push(item[0]);
-                        sales_trend_values.push(item[1])
-                        total_sales += item[1]
+                        sales_trend_values.push(item[1]);
                     })
 
             addData(salesGraphChart, sales_trend_labels, sales_trend_values)
