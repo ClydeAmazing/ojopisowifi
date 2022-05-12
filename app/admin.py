@@ -27,7 +27,6 @@ class MyAdminSite(admin.AdminSite):
         if ndsctl_res.stderr:
             return ndsctl_res.stderr.decode('utf-8')
     
-        # return ast.literal_eval(ndsctl_res.stdout.decode('utf-8'))
         return ndsctl_res.stdout.decode('utf-8')
 
     def dashboard_data(self, device):
@@ -140,11 +139,6 @@ class Singleton(admin.ModelAdmin):
         ]
         return custom_urls + urls
 
-    # def response_change(self, request, obj):
-    #     msg = '%s changed successfully' % obj
-    #     self.message_user(request, msg)
-    #     return HttpResponseRedirect("../../")
-
 class ClientsAdmin(admin.ModelAdmin):
     form = forms.ClientsForm
     list_display = ('IP_Address', 'MAC_Address', 'Device_Name', 'Connection_Status', 'Time_Left', 'running_time')
@@ -240,7 +234,7 @@ class SettingsAdmin(Singleton, admin.ModelAdmin):
         res = client_check(request)
         return res
 
-    def message_user(self, *args): # overridden method
+    def message_user(self, *args):
         pass
 
     def save_model(self, request, obj, form, change):
@@ -266,7 +260,7 @@ class NetworkAdmin(Singleton, admin.ModelAdmin):
         res = client_check(request)
         return res
 
-    def message_user(self, *args): # overridden method
+    def message_user(self, *args):
         pass
 
     def save_model(self, request, obj, form, change):
@@ -313,7 +307,7 @@ class DeviceAdmin(Singleton, admin.ModelAdmin):
     def has_delete_permission(self, *args, **kwargs):
         return False
 
-    def message_user(self, *args): # overridden method
+    def message_user(self, *args):
         pass
 
     def save_model(self, request, obj, form, change):
@@ -352,7 +346,7 @@ class PushNotificationsAdmin(Singleton, admin.ModelAdmin):
         res = client_check(request)
         return res
 
-    def message_user(self, *args): # overridden method
+    def message_user(self, *args):
         pass
 
     def save_model(self, request, obj, form, change):

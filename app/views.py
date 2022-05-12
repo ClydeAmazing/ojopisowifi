@@ -134,19 +134,15 @@ def generatePayload(fas):
 class Portal(View):
     template_name = 'captive.html'
 
-    def get(self, request, fas=None):
+    def get(self, request):
         settings = getSettings()
 
-        if fas:
-            payload = generatePayload(fas)
-            request.session['fas'] = fas
-        else:
-            fas = request.session.get('fas', None)
+        fas = request.session.get('fas', None)
 
-            if not fas:
-                 return redirect(settings['opennds_gateway'])
-            
-            payload = generatePayload(fas)
+        if not fas:
+            return redirect(settings['opennds_gateway'])
+        
+        payload = generatePayload(fas)
 
         if not payload:
             return redirect(settings['opennds_gateway'])
@@ -159,7 +155,7 @@ class Portal(View):
 
         return render(request, self.template_name, context=context)
 
-    def post(self, request, fas=None):
+    def post(self, request):
         fas_session = request.session.get('fas', None)
 
         settings = getSettings()
