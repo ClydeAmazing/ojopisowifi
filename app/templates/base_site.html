@@ -32,7 +32,7 @@
         <style>
             body{
                 background-color: #e3edf7; 
-                font-family: Roboto,sans-serif;
+                /* font-family: Roboto,sans-serif; */
             }
 
             body, h1, h2, h3, h4, h5, h6 {
@@ -45,7 +45,7 @@
                 white-space: normal;
             }
 
-            .btn-pause-resume, .btn-extend{
+            .btn-neu{
                 background: #e3edf7;
                 box-shadow: 6px 6px 10px -1px rgba(0,0,0,0.15),
                             -6px -6px 10px -1px rgba(255,255,255,0.7)
@@ -70,7 +70,6 @@
             }
 
             .neu-shadow{
-                /* box-shadow: inset -3px -3px 6px #ffffff, inset 3px 3px 6px #d1d9e6; */
                 box-shadow: 6px 6px 10px -1px rgba(0,0,0,0.15),
                             -6px -6px 10px -1px rgba(255,255,255,0.7)
             }
@@ -119,8 +118,11 @@
                 fill: none;
                 stroke: url(#GradientColor);
                 stroke-width: 20px;
-                stroke-dasharray: 440;
-                stroke-dashoffset: 0;
+                stroke-dasharray: 440px;
+                stroke-dashoffset: 0px;
+                transform-origin: center;
+                transform: rotate(270deg);
+                stroke-linecap: round;
             }
 
             .fix-bottom{

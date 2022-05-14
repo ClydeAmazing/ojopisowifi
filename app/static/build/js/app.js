@@ -18,7 +18,8 @@ function show_notification(type, icon, message){
             animate: true,
             in_class: 'rotateInDownLeft',
             out_class: 'rotateOutUpRight'
-        }
+        },
+        duration: 1000
     };
 
     new PNotify(options);
@@ -26,7 +27,6 @@ function show_notification(type, icon, message){
 
 //Set initial time left
 var init_time = time_formatter(seconds_left * 1000)
-// var expire_time = new Date(Date.now() + (seconds_left * 1000))
 $('.remaining-time').html(init_time)
 
 if (conn_status === 'Paused'){
@@ -40,17 +40,8 @@ var myTimer = new Timer({
     ontick  : function(s) {
         var time = time_formatter(s);
         $('.remaining-time').html(time);
-        t = 440 - (440 * (s / (total_time * 1000)));
-
-        $('circle').animate({'stroke-dashoffset': t}, 1000);
     },
     onend   : function() {
-        timeout = '<span class = "text-danger"><strong>TIMEOUT</strong></span>'
-        $('#conn_stat').html('Disconnected').addClass('text-danger')
-        $('.con_status_holder').html(timeout)
-        $('.btn-extend').text('Insert Coin')
-        $('.btn-pause-resume').attr('disabled', 'disabled')
-
         show_notification('error', 'fas fa-exclamation-triangle', '<strong>Connection timeout.</strong> Insert coin(s) to continue browsing.')
         setTimeout(function(){
             window.location.href='/app/portal'
@@ -60,7 +51,13 @@ var myTimer = new Timer({
 
 //Countdown if not paused
 if (conn_status != 'Paused' && seconds_left > 0){
-    myTimer.start(seconds_left)
+    myTimer.start(seconds_left);
+
+    t = 440 - (440 * (seconds_left / total_time));
+    
+    $('circle').animate({'stroke-dashoffset': t}, 1000, 'linear', function(){
+        $('circle').animate({'stroke-dashoffset': 440}, seconds_left * 1000, 'linear');
+    });
 }
 
 //Time formatter
@@ -70,10 +67,10 @@ function time_formatter(mins){
     var minutes = Math.floor((mins % (1000 * 60 * 60)) / (1000 * 60));
     var seconds = Math.floor((mins % (1000 * 60)) / 1000);
 
-    str_time = days > 0 ? days + 'd ' : '' 
-    str_time += hours > 0 ? hours + 'h ' : ''
-    str_time += minutes > 0 ? minutes + 'm ' : ''
-    str_time += seconds > 0 ? seconds + 's' : ''
+    str_time = days > 0 ? String(days).padStart(2, '0') + 'd ' : '' 
+    str_time += hours > 0 ? String(hours).padStart(2, '0') + 'h ' : ''
+    str_time += minutes > 0 ? String(minutes).padStart(2, '0') + 'm ' : ''
+    str_time += seconds > 0 ? String(seconds).padStart(2, '0') + 's' : '0s'
     
     return str_time
 }

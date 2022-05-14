@@ -1,8 +1,9 @@
 from django import forms
+from django.core.validators import validate_ipv4_address
 from app import models
 
 class ClientsForm(forms.ModelForm):
-	Time_Left= forms.CharField(widget= forms.TextInput
+	Time_Left= forms.CharField(widget=forms.TextInput
 		(attrs={'class':'vTextField'}))
 	
 	class Meta:
@@ -10,14 +11,14 @@ class ClientsForm(forms.ModelForm):
 		fields = '__all__'
 
 class NetworkForm(forms.ModelForm):
-	Server_IP= forms.CharField(widget= forms.TextInput
-		(attrs={'class':'vTextField'}))
+	Server_IP= forms.CharField(widget=forms.TextInput
+		(attrs={'class':'vTextField'}), validators=[validate_ipv4_address])
 	Netmask= forms.CharField(widget= forms.TextInput
-		(attrs={'class':'vTextField'}))
+		(attrs={'class':'vTextField'}), validators=[validate_ipv4_address])
 	DNS_1= forms.CharField(widget= forms.TextInput
-		(attrs={'class':'vTextField'}))
+		(attrs={'class':'vTextField'}), validators=[validate_ipv4_address])
 	DNS_2= forms.CharField(widget= forms.TextInput
-		(attrs={'class':'vTextField'}))
+		(attrs={'class':'vTextField'}), validators=[validate_ipv4_address])
 	
 	class Meta:
 		model = models.Network

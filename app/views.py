@@ -247,9 +247,9 @@ class Portal(View):
                     coin_queue.save()
 
                 # Activate coinslot
-                toggle_slot.delay(1, settings['slot_light_pin'])
+                # toggle_slot.delay(1, settings['slot_light_pin'])
 
-                messages.success(request, 'Insert coin')
+                messages.success(request, 'Please insert your coin(s).')
             
             return redirect('app:portal')
 
@@ -291,9 +291,9 @@ class Portal(View):
 
                 client.expire_slot()
                 # Deactivate coinslot
-                toggle_slot.delay(0, settings['slot_light_pin'])
+                # toggle_slot.delay(0, settings['slot_light_pin'])
 
-                messages.success(request, f'Voucher code {voucher.Voucher_code} successfully generated. The new code is added to your voucher list.')
+                messages.success(request, f'Voucher code {voucher.Voucher_code} successfully generated. The new code is added to your voucher list.', extra_tags="voucher_redeem")
             except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):
                 resp = api_response(700)
                 messages.error(request, resp['description'])

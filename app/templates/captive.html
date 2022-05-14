@@ -10,7 +10,7 @@
         </audio> 
         <div>
             <div class="row justify-content-center">
-                <div class="col col-sm-6 col-md-4 p-0">
+                <div class="col col-sm-6 col-md-3 p-0">
                     <div class="row">
                         <div class="col">
                             <div class="progress bg-transparent" style="height: 7px; background-color: None;">
@@ -28,7 +28,7 @@
                             {% csrf_token %}
 
                             {% if not whitelisted %}
-                                <div class="row p-2">
+                                <div class="row">
                                     <div class="col text-center">
                                         {% if insert_coin %}
                                             <h5 id="conn_stat" class="text-danger">Insert Coin</h5>
@@ -56,7 +56,7 @@
                                                         <stop offset="100%" stop-color="#673ab7" />
                                                     </linearGradient>
                                                 </defs>
-                                                <circle cx="80" cy="80" r="70" stroke-linecap="round" transform="rotate(-85, 80, 80)" />
+                                                <circle cx="80" cy="80" r="70"/>
                                             </svg>
                                         </div>
                                     </div>
@@ -65,7 +65,7 @@
 
                                     <div class="row justify-content-sm-center p-2">
                                         <div class="col-6 d-flex align-items-stretch">
-                                            <button type="submit" name="extend" class="mb-2 btn btn-block btn-md btn-rounded text-success btn-extend">
+                                            <button type="submit" name="extend" class="mb-2 btn btn-block btn-rounded text-success btn-neu">
                                                 {% if total_coins > 0 %}
                                                     <span class="badge badge-pill badge-warning"><strong>₱{{ total_coins }}</strong></span>
                                                 {% else %}
@@ -76,7 +76,7 @@
                                         </div>
                                         {% if pause_resume_flg %}
                                             <div class="col-6 d-flex align-items-stretch">
-                                                <button type="submit" name="pause_resume" value="{% if status == 'Paused' %}resume{% elif status == 'Connected' %}pause{% endif %}" id="btn-pause-resume_x" class="mb-2 btn btn-block btn-md btn-rounded {% if status == 'Paused' %}text-info{% elif status == 'Connected' %}text-danger{% endif %} btn-pause-resume">
+                                                <button type="submit" name="pause_resume" value="{% if status == 'Paused' %}resume{% elif status == 'Connected' %}pause{% endif %}" class="mb-2 btn btn-block btn-rounded {% if status == 'Paused' %}text-info{% elif status == 'Connected' %}text-danger{% endif %} btn-neu">
                                                     <span class="fas {% if status == 'Paused' %}fa-play{% elif status == 'Connected' %}fa-pause{% endif %}"></span>
                                                     {% if status == 'Paused' %} Resume{% elif status == 'Connected' %} Pause{% endif %}
                                                 </button>
@@ -101,7 +101,7 @@
 
                                     <div class="row p-2">
                                         <div class="col-8 mx-auto text-center">
-                                            <button type="submit" name="connect" class="btn btn-md btn-block btn-rounded {% if total_coins == 0 %} btn-outline-default {% else %} btn-outline-success {% endif %}  btn-done neu-shadow" {% if total_coins == 0 %} disabled {% endif %}>
+                                            <button type="submit" name="connect" class="btn btn-block btn-rounded btn-done btn-neu text-success" {% if total_coins == 0 %} disabled {% endif %}>
                                                 {% if total_coins == 0 %} 
                                                     0 Coins Inserted
                                                 {% else %}
@@ -119,7 +119,7 @@
                                                 <button 
                                                     type="submit" 
                                                     name="generate" 
-                                                    class="btn btn-md btn-block btn-rounded {% if total_coins == 0 %} btn-outline-default {% else %} btn-outline-danger {% endif %} btn-generate neu-shadow" 
+                                                    class="btn btn-block btn-rounded btn-generate btn-neu text-danger" 
                                                     data-toggle="modal" 
                                                     data-target="#voucher-modal" {% if total_coins == 0 %} disabled {% endif %}>    
                                                     
@@ -152,7 +152,7 @@
 
                                 <div class="row p-2">
                                     <div class="col text-center">
-                                        <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle" data-toggle="modal" data-target="#rates-modal"> Wifi Rates </button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm dropdown-toggle p-2" data-toggle="modal" data-target="#rates-modal"> Wifi Rates </button>
                                     </div>
                                 </div>
                             {% else %}
@@ -173,7 +173,7 @@
                                 </div>
                             </div>
                         {% endif %}
-                        <div class="row p-2 text-center">
+                        <div class="row px-2 pt-3 text-center">
                             <div class="col">
                                 <span class="text-muted"><small>Powered by: </small></span>
                                 <img src="/static/build/images/ojo_logo.png" style="width: 110px">
@@ -246,28 +246,31 @@
                             <button type="button" class="close" data-dismiss="modal">&times;</button>
                         </div>
                         <div class="modal-body">
-                            <div class="input-group mb-3">
-                                <input type="text" class="form-control text-center input-sm" name="input_voucher_redeem" placeholder="Enter code">
-                                <div class="input-group-append">
-                                    <button class="input-group-text bg-success text-white" id="btn_voucher_redeem">Redeem</button>
-                                </div>
-                            </div>
                             {% if vouchers %}
-                                <table class="table table-sm table-borderless table-striped text-center">
+                                <table class="table table-sm table-borderless text-center mb-1">
                                     <thead>
-                                        <tr><th>My Codes</th><th>Time</th><th></th></tr>
+                                        <tr><th>Codes</th><th>Time</th><th></th></tr>
                                     </thead>
                                     <tbody>
                                         {% for voucher in vouchers %}
                                         <tr>
                                             <td class="align-middle"><strong>{{ voucher.Voucher_code }}</strong></td>
                                             <td class="align-middle"><strong>{{ voucher.Voucher_time_value|duration }}</strong></td>
-                                            <td class="align-middle"><button class="btn btn-sm btn-warning p-1 btn_redeem_voucher" data-voucher="{{ voucher.Voucher_code }}"><strong> Use this</strong></button></td>
+                                            <td class="align-middle"><button class="btn btn-sm btn-warning p-1 btn_redeem_voucher" data-voucher="{{ voucher.Voucher_code }}"><strong>Add to time</strong></button></td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
                                 </table>
+                                <div class="text-center text-primary mb-1"> 
+                                    or
+                                </div>
                             {% endif %}
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control text-center" name="input_voucher_redeem" placeholder="Enter code">
+                                <div class="input-group-append">
+                                    <button class="input-group-text bg-success text-white" id="btn_voucher_redeem">Redeem</button>
+                                </div>
+                            </div>
                             <form id="voucher_form" method="POST" action="{% url 'app:redeem' %}">
                                 {% csrf_token %}
                             </form>
@@ -335,14 +338,14 @@
             function update_notif_id(userId){
                 const data = {action: 'update_notif_id', notifId: userId, mac: mac_add};
                 fetch('', {
-                method: 'POST',
-                mode: 'same-origin',
-                body: JSON.stringify(data),
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRFToken': token
-                }
+                    method: 'POST',
+                    mode: 'same-origin',
+                    body: JSON.stringify(data),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRFToken': token
+                    }
                 })
                 .then(response => response.text()
                 )
@@ -384,6 +387,10 @@
                     var type = '{% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}error{% elif message.level == DEFAULT_MESSAGE_LEVELS.SUCCESS %}success{% endif %}'
 
                     show_notification(type, icon, '{{message|safe}}');
+
+                    {% if 'voucher_redeem' in message.extra_tags %}
+                        $('#enter-voucher-modal').modal('show');
+                    {% endif %}
                 {% endfor %}
             {% endif %}
 
@@ -421,8 +428,6 @@
                         total_time.setSeconds(response['Total_Time']);
                         total_time_val = total_time.getTime();
 
-                        $('.btn-done').removeClass('btn-outline-default').addClass('btn-outline-success');
-
                         $('.btn-done').html('<span class="fas fa-paper-plane"></span>\
                                             <b> Surf the Net!</b>\
                                             <span class="badge badge-pill badge-warning">\
@@ -431,7 +436,6 @@
                         $('.btn-done').removeAttr('disabled');
                         
                         {% if voucher_flg %}
-                            $('.btn-generate').removeClass('btn-outline-default').addClass('btn-outline-danger');
                             $('.btn-generate').removeAttr('disabled');
                         {% endif %}
 

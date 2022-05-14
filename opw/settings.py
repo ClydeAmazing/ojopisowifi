@@ -103,6 +103,7 @@ JAZZMIN_SETTINGS = {
         'app.Whitelist': 'fas fa-clipboard-check', 
     },
     'custom_css': '/build/css/dashboard.css',
+    "use_google_fonts_cdn": False
 }
 
 JAZZMIN_UI_TWEAKS = {

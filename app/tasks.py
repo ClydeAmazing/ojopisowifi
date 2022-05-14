@@ -3,7 +3,7 @@ from celery import shared_task
 from app import models
 from app.opw import fprint
 from datetime import timedelta
-import requests, json, subprocess, ast
+import requests, json, subprocess, ast, time
 
 @shared_task
 def system_sync():
@@ -169,6 +169,8 @@ def sweep():
                 if not ndsctl_res.stderr:
                     print('Client ' + client + ' successfully authenticated.')
 
+                time.sleep(1)
+
             # Deauthentication
             for client in for_deauth_clients:
                 cmd = ['sudo', 'ndsctl', 'deauth', client]
@@ -176,6 +178,8 @@ def sweep():
 
                 if not ndsctl_res.stderr:
                     print('Client ' + client + ' sucessfully deauthenticated.')
+
+                time.sleep(1)
         except (SyntaxError, ValueError):
             pass
 
