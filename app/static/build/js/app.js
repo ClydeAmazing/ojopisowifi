@@ -37,6 +37,10 @@ if (conn_status === 'Paused'){
 
 var myTimer = new Timer({
     tick    : 1,
+    onstart: function(s) {
+        t = Math.floor(440 - (440 * (s / (total_time*1000))));
+        $('circle').animate({'stroke-dashoffset': t}, 500, 'linear');
+    },
     ontick  : function(s) {
         var time = time_formatter(s);
         $('.remaining-time').html(time);
@@ -55,10 +59,6 @@ var myTimer = new Timer({
 //Countdown if not paused
 if (conn_status != 'Paused' && seconds_left > 0){
     myTimer.start(seconds_left);
-
-    t = Math.floor(440 - (440 * (seconds_left / total_time)));
-    
-    $('circle').animate({'stroke-dashoffset': t}, 500, 'linear');
 }
 
 //Time formatter
@@ -76,7 +76,7 @@ function time_formatter(mins){
     return str_time
 }
 
-$( window ).on('beforeunload', function( event ) {
+$(window).on('beforeunload', function( event ) {
     $("#loadMe").modal({
         backdrop: "static",
         keyboard: false,
