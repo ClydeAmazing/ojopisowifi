@@ -40,6 +40,9 @@ var myTimer = new Timer({
     ontick  : function(s) {
         var time = time_formatter(s);
         $('.remaining-time').html(time);
+
+        t = Math.floor(440 - (440 * (s / (total_time*1000))));
+        $('circle').css('stroke-dashoffset', t);
     },
     onend   : function() {
         show_notification('error', 'fas fa-exclamation-triangle', '<strong>Connection timeout.</strong> Insert coin(s) to continue browsing.')
@@ -53,11 +56,9 @@ var myTimer = new Timer({
 if (conn_status != 'Paused' && seconds_left > 0){
     myTimer.start(seconds_left);
 
-    t = 440 - (440 * (seconds_left / total_time));
+    t = Math.floor(440 - (440 * (seconds_left / total_time)));
     
-    $('circle').animate({'stroke-dashoffset': t}, 1000, 'linear', function(){
-        $('circle').animate({'stroke-dashoffset': 440}, seconds_left * 1000, 'linear');
-    });
+    $('circle').animate({'stroke-dashoffset': t}, 500, 'linear');
 }
 
 //Time formatter
