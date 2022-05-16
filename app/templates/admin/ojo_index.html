@@ -194,7 +194,7 @@
                     <div class="card-header border-0">
                         <h3 class="card-title">
                             <i class="fas fa-th mr-1"></i>
-                            NDSCTL
+                            Utilities
                         </h3>
 
                         <div class="card-tools">
@@ -207,8 +207,21 @@
                         </div>
                     </div>
                     <div class="card-body py-2">
-                        <div class="row" id="ndsctl">
-                           <pre class="w-100" style="color: #d5d7de; background-color: #131417;">{{ dashboard_data.ndsctl }}</pre>
+                        <div class="row">
+                            <div class="col">
+                                <pre style="color: #d5d7de; background-color: #131417;">{{ terminal }}</pre>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-6 mb-2">
+                                <form method="POST" action=".">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-primary w-100" name="speedtest">
+                                        <i class="fa fa-tachometer-alt"></i> Run Speedtest
+                                    </button>
+                                </form>
+                                
+                            </div>
                         </div>
                     </div>
                 </div>

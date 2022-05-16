@@ -166,10 +166,9 @@
                             {% endif %}
                         </form>
                         {% if user_details %}
-                            <div class="row p-2 text-center">
-                                <div class="col text-muted">
-                                    <small>IP: {{ ip }}</small><br />
-                                    <small>MAC: {{ mac }}</small>
+                            <div class="row p-2">
+                                <div class="col text-center text-muted">
+                                    <small>{{ ip }} || {{ mac }}</small>
                                 </div>
                             </div>
                         {% endif %}

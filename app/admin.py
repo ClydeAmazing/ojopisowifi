@@ -8,7 +8,7 @@ from django.db.models import Sum
 from django.db.models.functions import TruncMonth, TruncDate
 from django.urls import path
 from app import models, forms
-from app.opw import cc, grc
+from app.opw import cc, grc, get_nds_status, speedtest
 
 from django.contrib.auth.models import User, Group
 
@@ -22,13 +22,6 @@ def client_check(request):
 
 
 class MyAdminSite(admin.AdminSite):
-    def get_NDS_status(self):
-        ndsctl_res = subprocess.run("sudo ndsctl status | grep -e 'Version\|Uptime\|Gateway Name\|Upstream\|FAS'", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        if ndsctl_res.stderr:
-            return ndsctl_res.stderr.decode('utf-8')
-    
-        return ndsctl_res.stdout.decode('utf-8')
-
     def dashboard_data(self, device):
         info = dict()
         ledger = models.Ledger.objects.all()
@@ -53,7 +46,7 @@ class MyAdminSite(admin.AdminSite):
         info['sales_trend'] = list(sales_trend)
 
         # test ndsctl response
-        info['ndsctl'] = self.get_NDS_status()
+        # info['ndsctl'] = get_nds_status()
 
         cc_res = cc()
         if not cc_res:
@@ -88,6 +81,8 @@ class MyAdminSite(admin.AdminSite):
                     messages.success(request, 'Registration code generated successfully.')
                 else:
                     messages.warning(request, 'Device already activated.')
+            elif 'speedtest' in request.POST:
+                request.session['speedtest_result'] = speedtest()
             elif all(a in request.POST for a in ['activate', 'key']):
                 key = request.POST.get('key')
                 result = cc(key)
@@ -114,6 +109,13 @@ class MyAdminSite(admin.AdminSite):
         if activation_request:
             extra_context['activation'] = activation_request
             del request.session['activation']
+
+        speedtest_result = request.session.get('speedtest_result', None)
+        if speedtest_result:
+            extra_context['terminal'] = speedtest_result
+            del request.session['speedtest_result']
+        else:
+            extra_context['terminal'] = get_nds_status()
 
         return super(MyAdminSite, self).index(request, extra_context=extra_context)
 

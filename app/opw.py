@@ -1,8 +1,7 @@
 from cryptography.fernet import Fernet
 from base64 import b64decode
 from app import models
-import rsa
-import json
+import json, rsa, subprocess
 
 def api_response(code):
     response = dict()
@@ -100,6 +99,20 @@ def grc():
     data_byte = json.dumps(data).encode('utf-8')
     res = f.encrypt(data_byte)
     return res
+
+def get_nds_status():
+    ndsctl_res = subprocess.run("sudo ndsctl status | grep -e 'Version\|Uptime\|Gateway Name\|Upstream\|FAS'", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if ndsctl_res.stderr:
+        return ndsctl_res.stderr.decode('utf-8')
+
+    return ndsctl_res.stdout.decode('utf-8')
+
+def speedtest():
+    ndsctl_res = subprocess.run("sudo speedtest", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    if ndsctl_res.stderr:
+        return ndsctl_res.stderr.decode('utf-8')
+
+    return ndsctl_res.stdout.decode('utf-8')
 
 def credit_pulse(slot_id, pulse):
     try:
