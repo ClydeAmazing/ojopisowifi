@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='vouchers',
             name='Voucher_code',
-            field=models.CharField(default=app.models.Vouchers.generate_code, max_length=20, unique=True),
+            field=models.CharField(default='TEST', max_length=20, unique=True),
         ),
         migrations.AlterField(
             model_name='vouchers',

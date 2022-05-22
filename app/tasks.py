@@ -106,6 +106,7 @@ def sweep():
     models.Device.objects.get(pk=1).save()
 
     clients = models.Clients.objects.all()
+    settings = models.Settings.objects.get(pk=1)
 
     for client in clients:
         if client.Connection_Status == 'Disconnected':
@@ -160,8 +161,9 @@ def sweep():
                     upload_rate = client_data['Upload_Rate'] if client_data['Upload_Rate'] > 0 else global_upload_rate
                     download_rate = client_data['Download_Rate'] if client_data['Download_Rate'] > 0 else global_download_rate
                 else:
-                    upload_rate = global_upload_rate
-                    download_rate = global_download_rate
+                    limit_whitelisted = settings.Limit_Allowed_Clients
+                    upload_rate = global_upload_rate if limit_whitelisted else 0
+                    download_rate = global_download_rate if limit_whitelisted else 0
 
                 cmd = ['sudo', 'ndsctl', 'auth', client, str(0), str(upload_rate), str(download_rate), str(0), str(0)]
                 ndsctl_res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

@@ -5,9 +5,15 @@
 
 {% block body %}
     {% block content %}
-        <audio id="coins_audio" src="/static/build/audio/coins.mp3" type="audio/mpeg">
-            Your browser does not support the audio element.
-        </audio> 
+        {% if insert_coin %}
+            <audio id="coins_audio" src="/static/build/audio/coins.mp3" type="audio/mpeg">
+                Your browser does not support the audio element.
+            </audio>
+        {% endif %}
+        {% if insert_coin and insert_coin_sound %} 
+            <audio id="insert_coin_audio" src="/static/build/audio/insert_coin.wav" type="audio/mpeg" loop>
+            </audio>
+        {% endif %}
         <div>
             <div class="row justify-content-center">
                 <div class="col col-sm-6 col-md-3 p-0">
@@ -131,9 +137,19 @@
                                     {% endif %}
 
                                 {% endif %}
+                                
+                                {% if insert_coin %}
+                                    <div class="row p-2">
+                                        <div class="col text-center">
+                                            <button type="submit" name="done" class="btn btn-neu btn-circle p-0 text-dark">
+                                                <span  class="fa fa-times"></span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                {% endif %}
 
                                 <!-- Voucher Codes Button -->
-                                {% if voucher_flg %}
+                                {% if voucher_flg and not insert_coin %}
                                     <div class="row p-2">
                                         <div class="col text-center">
                                             <small>
@@ -165,14 +181,14 @@
                                 </div>
                             {% endif %}
                         </form>
-                        {% if user_details %}
+                        {% if user_details and not insert_coin %}
                             <div class="row p-2">
                                 <div class="col text-center text-muted">
-                                    <small>{{ ip }} || {{ mac }}</small>
+                                    <small>{{ ip }} | {{ mac }}</small>
                                 </div>
                             </div>
                         {% endif %}
-                        <div class="row px-2 pt-3 text-center">
+                        <div class="row px-2 pt-4 text-center">
                             <div class="col">
                                 <span class="text-muted"><small>Powered by: </small></span>
                                 <img src="/static/build/images/ojo_logo.png" style="width: 110px">
@@ -220,20 +236,6 @@
             </div>
         </div>
         <!-- End Rates Modal -->
-        <!-- Loader Modal -->
-        <div class="modal fade" id="loadMe" tabindex="-1" role="dialog" aria-labelledby="loadMeLabel" data-backdrop="static" data-keyboard="false">
-            <div class="modal-dialog modal-sm" role="document">
-                <div class="modal-content">
-                    <div class="modal-body text-center">
-                        <div class="loader"></div>
-                        <div class="loader-txt">
-                            <small>Please wait</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- End of Loader Modal -->
 
         {% if voucher_flg %}
             <!-- Enter Voucher Modal -->
@@ -284,6 +286,21 @@
             </div>
             <!-- End Enter Voucher Modal -->
         {% endif %}
+
+        <!-- Loader Modal -->
+        <div class="modal fade" id="loadMe" tabindex="-1" role="dialog" aria-labelledby="loadMeLabel" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog modal-sm" role="document">
+                <div class="modal-content">
+                    <div class="modal-body text-center">
+                        <div class="loader"></div>
+                        <div class="loader-txt">
+                            <small>Please wait</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- End of Loader Modal -->
     {% endblock content %}
 {% endblock body %}
 {% block javascripts %}
@@ -396,6 +413,13 @@
             {% if insert_coin %}
                 var coins_audio = document.getElementById("coins_audio");
 
+                {% if insert_coin_sound %}
+                    var insert_coin_audio = document.getElementById("insert_coin_audio");
+
+                    insert_coin_audio.volume = 0.1;
+                    insert_coin_audio.play();
+                {% endif %}
+
                 countdown(slot_remaining_time);
 
                 q = setInterval(function(){
@@ -411,6 +435,10 @@
                         clearInterval(q);
                         show_notification('error', 'fas fa-stopwatch', '<strong>Slot timeout.</strong>');
                         $('.btn-insert-coin').removeClass('pulsating').addClass('neu-shadow');
+                        
+                        {% if insert_coin_sound %}
+                            insert_coin_audio.pause()
+                        {% endif %}
 
                         setTimeout(function(){
                             window.location.reload()

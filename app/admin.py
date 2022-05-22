@@ -45,9 +45,6 @@ class MyAdminSite(admin.AdminSite):
         info['total_sales'] = total_sales
         info['sales_trend'] = list(sales_trend)
 
-        # test ndsctl response
-        # info['ndsctl'] = get_nds_status()
-
         cc_res = cc()
         if not cc_res:
             info['license_status'] = 'Not Activated'
@@ -144,8 +141,12 @@ class Singleton(admin.ModelAdmin):
 class ClientsAdmin(admin.ModelAdmin):
     form = forms.ClientsForm
     list_display = ('IP_Address', 'MAC_Address', 'Device_Name', 'Connection_Status', 'Time_Left', 'running_time')
-    readonly_fields = ('IP_Address', 'MAC_Address', 'Expire_On', 'Connected_On', 'Notification_ID', 'Notified_Flag', 'Date_Created', 'FAS_Session')
+    readonly_fields = ('IP_Address', 'MAC_Address', 'Connected_On', 'Expire_On', 'Notification_ID', 'Notified_Flag', 'Date_Created')
     actions = ['Connect', 'Disconnect', 'Pause', 'Whitelist']
+    exclude = ('Settings', 'FAS_Session')
+
+    def has_add_permission(self, *args, **kwargs):
+        return False
 
     def changelist_view(self, request, extra_context=None):
         extra_context = {'title': 'Clients List'}
@@ -201,18 +202,16 @@ class WhitelistAdmin(admin.ModelAdmin):
         return super(WhitelistAdmin, self).changelist_view(request, extra_context=extra_context)
 
 class CoinSlotAdmin(admin.ModelAdmin):
+    form = forms.CoinSlotForm
     list_display = ('Edit', 'Slot_ID', 'Slot_Desc')
-    # readonly_fields = ('Client', 'Last_Updated')
-
-    # def has_add_permission(self, *args, **kwargs):
-    #     return not models.CoinSlot.objects.exists()
-
-    # def has_delete_permission(self, *args, **kwargs):
-    #     return False
+    readonly_fields = ('Slot_ID', 'Client')
 
 class LedgerAdmin(admin.ModelAdmin):
     list_display = ('Date', 'Client', 'Denomination', 'Slot_No')
     list_filter = ('Client', 'Date')
+
+    def has_add_permission(self, *args, **kwargs):
+        return False
 
     def changelist_view(self, request, extra_context=None):
         extra_context = {'title': 'Transaction Ledger'}
@@ -244,9 +243,9 @@ class SettingsAdmin(Singleton, admin.ModelAdmin):
         super(SettingsAdmin, self).save_model(request, obj, form, change)
 
 class NetworkAdmin(Singleton, admin.ModelAdmin):
-    form = forms.NetworkForm
+    # form = forms.NetworkForm
     list_display = ('Edit', 'Upload_Rate', 'Download_Rate')
-    # list_editable = ('Upload_Rate', 'Download_Rate')
+    exclude = ('Server_IP', 'Netmask', 'DNS_1', 'DNS_2')
 
     def changelist_view(self, request, extra_context=None):
         extra_context = {'title': 'Global Network Settings'}
@@ -273,19 +272,13 @@ class CoinQueueAdmin(admin.ModelAdmin):
     list_display = ('Client', 'Total_Coins', 'Total_Time')
 
 class RatesAdmin(admin.ModelAdmin):
-    list_display = ('Edit', 'Denom', 'Minutes')
+    form = forms.RatesForm
+    list_display = ('Edit', 'Denom', 'Minutes', 'Minutes_Auto')
     field_order = ('Minutes', 'Denom')
 
     def changelist_view(self, request, extra_context=None):
-        extra_context = {'title': 'Wifi Custom Rates'}
+        extra_context = {'title': 'Wifi Rates'}
         return super(RatesAdmin, self).changelist_view(request, extra_context=extra_context)
-
-    def has_module_permission(self, *args, **kwargs):
-        settings = models.Settings.objects.get(pk=1)
-        if settings.Rate_Type == 'manual':
-            return  True
-        else:
-            return  False
 
     def has_change_permission(self, request, *args, **kwargs):
         res = client_check(request)
@@ -317,6 +310,7 @@ class DeviceAdmin(Singleton, admin.ModelAdmin):
         super(DeviceAdmin, self).save_model(request, obj, form, change)
 
 class VouchersAdmin(admin.ModelAdmin):
+    form = forms.VouchersForm
     list_display = ('Voucher_code', 'Voucher_status', 'Voucher_client', 'Voucher_create_date_time', 'Voucher_used_date_time', 'Voucher_time_value')
     readonly_fields = ('Voucher_code', 'Voucher_used_date_time')
 
@@ -332,6 +326,7 @@ class VouchersAdmin(admin.ModelAdmin):
             return False
 
 class PushNotificationsAdmin(Singleton, admin.ModelAdmin):
+    form = forms.PushNotifForm
     list_display = ('Enabled', 'notification_title', 'notification_message', 'notification_trigger_time')
 
     def changelist_view(self, request, extra_context=None):

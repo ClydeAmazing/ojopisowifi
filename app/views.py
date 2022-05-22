@@ -12,7 +12,6 @@ from app import models
 from app.opw import api_response, cc, grc, credit_pulse
 from app.tasks import toggle_slot
 from base64 import b64decode
-# import pyotp
 
 def is_ajax(request):
     return request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest'
@@ -114,9 +113,9 @@ def getSettings():
     info['voucher_flg'] = settings.Vouchers_Flg
     info['pause_resume_flg'] = settings.Pause_Resume_Flg
     info['pause_resume_enable_time'] = 0 if not settings.Disable_Pause_Time else int(timedelta.total_seconds(settings.Disable_Pause_Time))
-    info['redir_url'] = settings.Redir_Url
     info['opennds_gateway'] = settings.OpenNDS_Gateway
     info['user_details'] = settings.Show_User_Details
+    info['insert_coin_sound'] = settings.Insert_Coin_Sound
 
     return info
 
@@ -275,6 +274,20 @@ class Portal(View):
 
             return redirect('app:portal')
 
+        if 'done' in request.POST:
+            try:
+                client = models.Clients.objects.get(MAC_Address=mac)
+                client.expire_slot()
+
+                # Deactivate coinslot
+                # toggle_slot.delay(0, settings['slot_light_pin'])
+
+            except (models.Clients.DoesNotExist):
+                resp = api_response(700)
+                messages.error(request, resp['description'])
+
+            return redirect('app:portal')
+
         if 'generate' in request.POST:
             try:
                 client = models.Clients.objects.get(MAC_Address=mac)
@@ -309,7 +322,7 @@ class Redeem(View):
 
         if fas and voucher_code:
             try:
-                voucher = models.Vouchers.objects.get(Voucher_code=voucher_code, Voucher_status = 'Not Used')
+                voucher = models.Vouchers.objects.get(Voucher_code=voucher_code.upper(), Voucher_status = 'Not Used')
                 
                 try:
                     client = models.Clients.objects.get(FAS_Session=fas)
@@ -328,21 +341,6 @@ class Redeem(View):
             return redirect(settings['opennds_gateway'])
             
         return redirect('app:portal')
-
-# @method_decorator(csrf_exempt, name='dispatch')
-class Pay(APIView):
-    permission_classes = [permissions.AllowAny]
-
-    def get(self, request):
-        settings = models.Settings.objects.values('Coinslot_Pin', 'Light_Pin', 'Slot_Timeout', 'Inactive_Timeout').get(pk=1)
-        return Response(settings, status=status.HTTP_200_OK)
-
-    def post(self, request):
-        slot_id = request.data.get('identifier')
-        pulse = int(request.data.get('pulse', 0))
-        resp = credit_pulse(slot_id, pulse)
-
-        return JsonResponse(resp, safe=False)
 
 class Commit(View):
     def get(self, request):

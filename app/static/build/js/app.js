@@ -39,7 +39,7 @@ var myTimer = new Timer({
     tick    : 1,
     onstart: function(s) {
         t = Math.floor(440 - (440 * (s / (total_time*1000))));
-        $('circle').animate({'stroke-dashoffset': t}, 500, 'linear');
+        $('circle').css('stroke-dashoffset', t);
     },
     ontick  : function(s) {
         var time = time_formatter(s);
@@ -49,6 +49,8 @@ var myTimer = new Timer({
         $('circle').css('stroke-dashoffset', t);
     },
     onend   : function() {
+        $('circle').css('stroke-dashoffset', 440);
+
         show_notification('error', 'fas fa-exclamation-triangle', '<strong>Connection timeout.</strong> Insert coin(s) to continue browsing.')
         setTimeout(function(){
             window.location.href='/app/portal'

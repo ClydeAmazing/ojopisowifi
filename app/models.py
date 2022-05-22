@@ -3,6 +3,7 @@ from django.db import models
 from datetime import timedelta
 from django.utils import timezone
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.utils import duration
 import string, random, os, math
 
 class Settings(models.Model):
@@ -16,20 +17,18 @@ class Settings(models.Model):
 
     Hotspot_Name = models.CharField(max_length=255)
     Hotspot_Address = models.CharField(max_length=255, null=True, blank=True)
-    # BG_Image = models.ImageField(upload_to=get_image_path, blank=True, null=True)
     Slot_Timeout = models.PositiveIntegerField(help_text='Slot timeout in seconds. Default is 15', default=15, validators=[MinValueValidator(1), MaxValueValidator(30)])
     Rate_Type = models.CharField(max_length=25, default="auto", choices=rate_type_choices, help_text='Select "Minutes/Peso" to use  Minutes / Peso value, else use "Custom Rate" to manually setup Rates based on coin value.')
-    Base_Value = models.DurationField(default=timezone.timedelta(minutes=0), verbose_name='Minutes / Peso')
+    Base_Value = models.DurationField(default=timezone.timedelta(minutes=0), verbose_name='Minutes / Peso', help_text='Base time value for each peso. Specify in hh:mm:ss format. Applicable only if Rate Type is Minutes/Peso')
     Inactive_Timeout = models.IntegerField(verbose_name='Inactive Timeout', help_text='Timeout before an idle client (status = Disconnected) is removed from the client list. (Minutes)')
-    Redir_Url = models.CharField(max_length=255, verbose_name='Redirect URL', help_text='Redirect url after a successful login. If not set, will default to the timer page.', null=True, blank=True)
     Vouchers_Flg = models.BooleanField(verbose_name='Vouchers', default=True, help_text='Enables voucher module.')
     Pause_Resume_Flg = models.BooleanField(verbose_name='Pause/Resume', default=True, help_text='Enables pause/resume function.')
-    # Pause_Limit = models.IntegerField(null=True, blank=True, help_text='Sets allowable number of pauses a client can have. No value means unlimited time pauses.')
     Disable_Pause_Time = models.DurationField(default=timezone.timedelta(minutes=0), null=True, blank=True, help_text='Disables Pause time button if remaining time is less than the specified time hh:mm:ss format.')
     Coinslot_Pin = models.IntegerField(verbose_name='Coinslot Pin', help_text='Please refer raspberry/orange pi GPIO.BOARD pinout.', null=True, blank=True)
     Light_Pin = models.IntegerField(verbose_name='Light Pin', help_text='Please refer raspberry/orange pi GPIO.BOARD pinout.', null=True, blank=True)
     OpenNDS_Gateway = models.URLField(max_length=200, default='http://10.0.0.1:2050', help_text='Captive portal gateway server url.')
     Show_User_Details = models.BooleanField(default=False, help_text='Shows client IP and MAC address on the main portal')
+    Insert_Coin_Sound = models.BooleanField(default=True, help_text='Enable/disable sound during insert coin.')
 
     def clean(self, *args, **kwargs):
         if self.Coinslot_Pin or self.Light_Pin:
@@ -189,13 +188,13 @@ class CoinSlot(models.Model):
         (1, 'Sub Vendo')
     )
 
-    def generate_code(size=10):
+    def generate_code(self, size=10):
         found = False
         random_code = None
 
         while not found:
             random_code = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(size))
-            count = Vouchers.objects.filter(Voucher_code=random_code).count()
+            count = CoinSlot.objects.filter(Slot_ID=random_code).count()
             if count == 0:
                 found = True
 
@@ -204,16 +203,15 @@ class CoinSlot(models.Model):
     Edit = 'Edit'
     Client = models.ForeignKey(Clients, on_delete=models.SET_NULL, null=True, blank=True, related_name='coin_slot')
     Type = models.IntegerField(default=1, choices=TYPE_CHOICES)
-    Slot_ID = models.CharField(default=generate_code, unique=True, max_length=10, null=False, blank=False)
-    Slot_Address = models.CharField(unique=True, max_length=17, null=False, blank=False, default='00:00:00:00:00:00')
+    Slot_ID = models.CharField(unique=True, max_length=10)
+    Slot_Address = models.CharField(unique=True, max_length=17, default='00:00:00:00:00:00')
     Slot_Desc = models.CharField(max_length=50, null=True, blank=True, verbose_name='Description')
-    Counter = models.IntegerField(default=0)
     Last_Updated = models.DateTimeField(null=True, blank=True, auto_now=True)
 
-    # def save(self, *args, **kwargs):
-    #     if self.Type == 0 and CoinSlot.objects.filter(Type=0).exists():
-    #         raise ValidationError('A built-in coinslot already exists.')
-    #     super(CoinSlot, self).save(*args, **kwargs)
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            self.Voucher_code = self.generate_code()
+        super(CoinSlot, self).save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Coin Slot'
@@ -226,7 +224,14 @@ class Rates(models.Model):
     Edit = "Edit"
     Denom = models.IntegerField(verbose_name='Denomination', help_text="Coin denomination corresponding to specified coinslot pulse.")
     Pulse = models.IntegerField(blank=True, null=True, help_text="Coinslot pulse count corresponding to coin denomination. Leave it blank for promotional rates.")
-    Minutes = models.DurationField(verbose_name='Duration', default=timezone.timedelta(minutes=0), help_text='Internet access duration in hh:mm:ss format')
+    Minutes = models.DurationField(verbose_name='Duration (Custom)', default=timezone.timedelta(minutes=0), help_text='Internet access duration in hh:mm:ss format')
+
+    @property
+    def Minutes_Auto(self):
+        settings = Settings.objects.get(pk=1)
+        return timedelta(seconds=timedelta.total_seconds(self.Denom * settings.Base_Value))
+
+    Minutes_Auto.fget.short_description = "Duration (Auto)"
 
     class Meta:
         verbose_name = "Rate"
@@ -275,12 +280,13 @@ class CoinQueue(models.Model):
 
 class Network(models.Model):
     Edit = "Edit"
-    Server_IP = models.GenericIPAddressField(verbose_name='Server IP', protocol='IPv4', default='10.0.0.1', null=False, blank=False)
-    Netmask = models.GenericIPAddressField(protocol='IPv4', default='255.255.255.0', null=False, blank=False)
-    DNS_1 = models.GenericIPAddressField(protocol='IPv4', verbose_name='DNS 1', default='8.8.8.8', null=False, blank=False)
+    Server_IP = models.GenericIPAddressField(verbose_name='Server IP', protocol='IPv4', default='10.0.0.1')
+    Netmask = models.GenericIPAddressField(protocol='IPv4', default='255.255.255.0')
+    DNS_1 = models.GenericIPAddressField(protocol='IPv4', verbose_name='DNS 1', default='8.8.8.8')
     DNS_2 = models.GenericIPAddressField(protocol='IPv4', verbose_name='DNS 2 (Optional)', default='8.8.4.4', null=True, blank=True)
-    Upload_Rate = models.IntegerField(verbose_name='Upload Bandwidth', help_text='Specify global internet upload bandwidth in Kbps. 0 = unlimited bandwidth', default=0)
-    Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify global internet download bandwidth in Kbps. 0 = unlimited bandwidth', default=0)
+    Upload_Rate = models.IntegerField(verbose_name='Upload Limit', help_text='Specify global internet upload bandwidth in Kbps. 0 = unlimited bandwidth', default=0)
+    Download_Rate = models.IntegerField(verbose_name='Download Limit', help_text='Specify global internet download bandwidth in Kbps. 0 = unlimited bandwidth', default=0)
+    Limit_Allowed_Clients = models.BooleanField(default=False, help_text='Check if bandwith limiting should also be applied to Allowed/Whitelisted devices.')
 
     class Meta:
         verbose_name = 'Networking'
@@ -295,7 +301,7 @@ class Vouchers(models.Model):
         ('Expired', 'Expired')
     )
 
-    def generate_code(size=6):
+    def generate_code(self, size=6):
         found = False
         random_code = None
 
@@ -307,12 +313,12 @@ class Vouchers(models.Model):
 
         return random_code
 
-    Voucher_code = models.CharField(default=generate_code, max_length=20, null=False, blank=False, unique=True)
-    Voucher_status = models.CharField(verbose_name='Status', max_length=25, choices=status_choices, default='Not Used', null=False, blank=False)
+    Voucher_code = models.CharField(max_length=20, unique=True)
+    Voucher_status = models.CharField(verbose_name='Status', max_length=25, choices=status_choices, default='Not Used')
     Voucher_client = models.ForeignKey(Clients, on_delete=models.CASCADE, null=True, blank=True, verbose_name='Client', help_text='Voucher code user. * Optional', related_name='voucher_code')
     Voucher_create_date_time = models.DateTimeField(verbose_name='Created Date/Time', auto_now_add=True)
     Voucher_used_date_time = models.DateTimeField(verbose_name='Used Date/Time', null=True, blank=True)
-    Voucher_time_value = models.DurationField(verbose_name='Time Value', default=timezone.timedelta(minutes=0))
+    Voucher_time_value = models.DurationField(verbose_name='Time Value', default=timezone.timedelta(minutes=0), help_text='Voucher time duration in hh:mm:ss format.')
 
     def redeem(self, client):
         client.Connect(self.Voucher_time_value)
@@ -328,6 +334,9 @@ class Vouchers(models.Model):
         if self.Voucher_status == 'Not Used':
             self.Voucher_used_date_time = None
 
+        if self._state.adding:
+            self.Voucher_code = self.generate_code()
+
         super(Vouchers, self).save(*args, **kwargs)
 
     class Meta:
@@ -342,7 +351,7 @@ class Device(models.Model):
     Ethernet_MAC = models.CharField(max_length=50, null=True, blank=True)
     Device_SN = models.CharField(max_length=50, null=True, blank=True)
     pub_rsa = models.TextField(null=False, blank=False)
-    ca = models.CharField(max_length=200, unique=True, null=False, blank=False)
+    ca = models.CharField(max_length=200, unique=True)
     action = models.IntegerField(default=0)
     Sync_Time = models.DateTimeField(auto_now=True, null=True, blank=True)
 
