@@ -1,15 +1,12 @@
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse, Http404
+from django.http import JsonResponse, Http404
 from django.shortcuts import render, redirect
 from django.views import View
 from django.utils import timezone
 from django.db.models import F
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import permissions, status
 from datetime import timedelta
 from app import models
-from app.opw import api_response, cc, grc, credit_pulse
+from app.opw import api_response
 from app.tasks import toggle_slot
 from base64 import b64decode
 

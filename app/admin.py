@@ -1,8 +1,5 @@
 from django.contrib import admin, messages
-from django.core import serializers
-from django.core.serializers.json import DjangoJSONEncoder
 from django.shortcuts import redirect
-from django.template.response import TemplateResponse
 from django.http import HttpResponse
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth, TruncDate
