@@ -1,0 +1,14 @@
+[Unit]
+Description=Hooks Service
+After=network.target
+
+[Service]
+Type=forking
+User=sudoadmin
+Group=sudo
+WorkingDirectory=/home/sudoadmin/src/ojopisowifi
+ExecStart=/home/sudoadmin/src/venv/bin/python hooks.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

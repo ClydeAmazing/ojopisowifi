@@ -70,10 +70,10 @@ function time_formatter(mins){
     var minutes = Math.floor((mins % (1000 * 60 * 60)) / (1000 * 60));
     var seconds = Math.floor((mins % (1000 * 60)) / 1000);
 
-    str_time = days > 0 ? String(days).padStart(2, '0') + 'd ' : '' 
-    str_time += hours > 0 ? String(hours).padStart(2, '0') + 'h ' : ''
-    str_time += minutes > 0 ? String(minutes).padStart(2, '0') + 'm ' : ''
-    str_time += seconds > 0 ? String(seconds).padStart(2, '0') + 's' : '0s'
+    str_time = days > 0 ? String(days) + 'd ' : '' 
+    str_time += hours > 0 ? String(hours) + 'h ' : ''
+    str_time += minutes > 0 ? String(minutes) + 'm ' : ''
+    str_time += seconds > 0 ? String(seconds) + 's' : '0s'
     
     return str_time
 }
