@@ -1,5 +1,5 @@
 [Unit]
-Description=Hooks Service
+Description=OPW intialization service
 After=network.target
 
 [Service]
@@ -7,7 +7,7 @@ Type=simple
 User=sudoadmin
 Group=sudo
 WorkingDirectory=/home/sudoadmin/src/ojopisowifi
-ExecStart=/home/sudoadmin/src/venv/bin/python /home/sudoadmin/src/ojopisowifi/hooks.py
+ExecStart=/home/sudoadmin/src/venv/bin/python manage.py initialize
 Restart=always
 
 [Install]

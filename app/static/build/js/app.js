@@ -31,6 +31,7 @@ $('.remaining-time').html(init_time)
 
 if (conn_status === 'Paused'){
     var init_status = 'paused';
+    $('circle').css('stroke-dashoffset', 0);
 }else{
     var init_status = null;
 }

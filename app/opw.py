@@ -63,7 +63,7 @@ def fprint():
                 serial = line[10:26]
         f.close()
         mac = open("/sys/class/net/eth0/address").read().strip()
-    except Exception:
+    except FileNotFoundError:
         pass
 
     return {
@@ -73,6 +73,9 @@ def fprint():
 
 def cc(ac=None):
     dev = models.Device.objects.get(pk=1)
+    if not dev.Device_SN or not dev.Ethernet_MAC:
+        return False
+
     data = dev.Device_SN + dev.Ethernet_MAC
     pub_rsa = dev.pub_rsa
     p_key = rsa.PublicKey.load_pkcs1(pub_rsa, 'PEM')
@@ -91,6 +94,9 @@ def cc(ac=None):
 
 def grc():
     dev = models.Device.objects.get(pk=1)
+    if not dev.Device_SN or not dev.Ethernet_MAC:
+        return False
+        
     ca = dev.ca
     data = dict()
     data['serial'] = dev.Device_SN

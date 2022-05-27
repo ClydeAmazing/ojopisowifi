@@ -6,24 +6,6 @@ from datetime import timedelta
 import requests, json, subprocess, ast, time
 
 @shared_task
-def system_sync():
-    fp = fprint()
-    dev = models.Device.objects.get(pk=1)
-    sync_time = dev.Sync_Time
-    dev.Ethernet_MAC = fp['eth0_mac']
-    dev.Device_SN = fp['serial']
-    dev.action = 0 # TODO: Check if this is still relevant
-    dev.save()
-
-    clients = models.Clients.objects.filter(Expire_On__isnull=False)
-    for client in clients:
-        time_diff = client.Expire_On - sync_time
-        if time_diff > timedelta(0):
-            client.Time_Left += time_diff
-            client.Expire_On = None
-            client.save()
-
-@shared_task
 def built_in_payment(identifier, pulse):
     try:
         slot_info = models.CoinSlot.objects.get(Slot_ID=identifier)

@@ -71,8 +71,11 @@ class MyAdminSite(admin.AdminSite):
             elif 'generate' in request.POST:
                 if not cc():
                     rc = grc()
-                    request.session['registration_key'] = rc.decode('utf-8')
-                    messages.success(request, 'Registration code generated successfully.')
+                    if not rc:
+                        messages.warning(request, 'Unable to generate registration code for this device.')
+                    else:
+                        request.session['registration_key'] = rc.decode('utf-8')
+                        messages.success(request, 'Registration code generated successfully.')
                 else:
                     messages.warning(request, 'Device already activated.')
             elif 'speedtest' in request.POST:
