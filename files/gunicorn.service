@@ -1,6 +1,6 @@
 [Unit]
 Description=gunicorn daemon
-After=network.target
+After=opw_init.service
 
 [Service]
 User=sudoadmin

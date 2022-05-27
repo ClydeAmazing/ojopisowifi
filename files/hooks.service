@@ -1,6 +1,6 @@
 [Unit]
 Description=Hooks Service
-After=network.target
+After=opw_init.service
 
 [Service]
 Type=simple

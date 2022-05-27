@@ -3,12 +3,11 @@ Description=OPW intialization service
 After=network.target
 
 [Service]
-Type=simple
+Type=oneshot
 User=sudoadmin
 Group=sudo
 WorkingDirectory=/home/sudoadmin/src/ojopisowifi
 ExecStart=/home/sudoadmin/src/venv/bin/python manage.py initialize
-Restart=always
 
 [Install]
 WantedBy=multi-user.target

@@ -1,6 +1,6 @@
 [Unit]
 Description=Celery Service
-After=network.target
+After=opw_init.service
 
 [Service]
 Type=forking
