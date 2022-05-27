@@ -18,7 +18,7 @@
     <div class="container-fluid">
         <!-- Info boxes -->
         <div class="row">
-            <div class="col-12 col-sm-4">
+            <div class="col-12 col-md-3">
                 <div class="info-box mb-3">
                     <span class="info-box-icon bg-success elevation-1"><i class="fas fa-shopping-cart"></i></span>
 
@@ -29,7 +29,7 @@
                 </div>
             </div>
 
-            <div class="col-12 col-sm-4">
+            <div class="col-12 col-md-3">
                 <div class="info-box">
                     <span class="info-box-icon bg-info elevation-1"><i class="fas fa-users"></i></span>
 
@@ -44,7 +44,7 @@
           <!-- fix for small devices only -->
           <!-- <div class="clearfix hidden-md-up"></div> -->
 
-            <div class="col-12 col-sm-4">
+            <div class="col-12 col-md-3">
                 <div class="info-box mb-3">
                     <span class="info-box-icon bg-danger elevation-1"><i class="fas fa-thumbs-up"></i></span>
 
@@ -55,16 +55,21 @@
                 </div>
             </div>
 
-          <!-- <div class="col-12 col-sm-6 col-md-3">
+          <div class="col-12 col-md-3">
             <div class="info-box mb-3">
-              <span class="info-box-icon bg-warning elevation-1"><i class="fas fa-mobile"></i></span>
+              <span class="info-box-icon bg-warning elevation-1"><i class="fas fa-key"></i></span>
 
               <div class="info-box-content">
-                <span class="info-box-text">New Devices</span>
-                <span class="info-box-number" id="box_new_devices"></span>
+                <span class="info-box-text">Activation Status</span>
+                <span class="info-box-number {% if dashboard_data.license_status == 'Activated' %}text-success{% else %}text-danger{% endif %}" id="box_new_devices">
+                    {% if dashboard_data.license_status == 'Activated' %}
+                        Activated
+                    {% else %}
+                        Not Activated
+                    {% endif %}</span>
               </div>
             </div>
-          </div> -->
+          </div>
         </div>
         
         <div class="row">
@@ -104,7 +109,8 @@
             </div>
 
             <div class="col-lg-4">
-                <div class="info-box mb-3 {% if dashboard_data.license_status == 'Activated' %} bg-success {% else %} bg-danger {% endif %}" id="activation_status_box">
+                <!-- Activation Status Card -->
+                <!-- <div class="info-box mb-3 {% if dashboard_data.license_status == 'Activated' %} bg-success {% else %} bg-danger {% endif %}" id="activation_status_box">
                     <span class="info-box-icon"><i class="fas fa-key"></i></span>
                     <div class="info-box-content">
                         <span class="info-box-text">Activation Status</span>
@@ -116,8 +122,9 @@
                             {% endif %}
                         </span>
                     </div>
-                </div>
-
+                </div> -->
+                
+                <!-- Activation Card -->
                 <div class="card {% if dashboard_data.license_status == 'Activated' %} d-none {% endif %}" id="activation_card">
                     <div class="card-header border-0">
                         <h3 class="card-title">
@@ -154,42 +161,7 @@
                     </div>
                 </div>
                 
-                <div class="card">
-                    <div class="card-header border-0">
-                        <h3 class="card-title">
-                            <i class="fas fa-th mr-1"></i>
-                            Device
-                        </h3>
-
-                        <div class="card-tools">
-                            <button type="button" class="btn bg-info btn-sm" data-card-widget="collapse">
-                                <i class="fas fa-minus"></i>
-                            </button>
-                            <button type="button" class="btn bg-info btn-sm" data-card-widget="remove">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body py-2">
-                        <div class="row">
-                            <div class="col-lg-6 mb-2">
-                                <button type="button" class="btn btn-warning w-100" data-toggle="modal" data-target="#reboot-modal">
-                                    <i class="fa fa-undo"></i> Reboot Device
-                                </button>
-                            </div>
-                            <div class="col-lg-6">
-                                <button type="button" class="btn btn-danger w-100" data-toggle="modal" data-target="#poweroff-modal">
-                                    <i class="fas fa-power-off"></i> Power Off
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- /.card-body -->
-                    <!-- <div class="card-footer bg-transparent">
-                    </div> -->
-                    <!-- /.card-footer -->
-                </div>
-
+                <!-- Utilities Card -->
                 <div class="card">
                     <div class="card-header border-0">
                         <h3 class="card-title">
@@ -221,6 +193,39 @@
                                     </button>
                                 </form>
                                 
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Device Card -->
+                <div class="card">
+                    <div class="card-header border-0">
+                        <h3 class="card-title">
+                            <i class="fas fa-th mr-1"></i>
+                            Device
+                        </h3>
+
+                        <div class="card-tools">
+                            <button type="button" class="btn bg-info btn-sm" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button type="button" class="btn bg-info btn-sm" data-card-widget="remove">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="row">
+                            <div class="col-lg-6 mb-2">
+                                <button type="button" class="btn btn-warning w-100" data-toggle="modal" data-target="#reboot-modal">
+                                    <i class="fa fa-undo"></i> Reboot
+                                </button>
+                            </div>
+                            <div class="col-lg-6">
+                                <button type="button" class="btn btn-danger w-100" data-toggle="modal" data-target="#poweroff-modal">
+                                    <i class="fas fa-power-off"></i> Power Off
+                                </button>
                             </div>
                         </div>
                     </div>
