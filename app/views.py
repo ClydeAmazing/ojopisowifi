@@ -10,6 +10,8 @@ from app.opw import api_response
 from app.tasks import toggle_slot
 from base64 import b64decode
 
+# This is a test change
+
 def is_ajax(request):
     return request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest'
 
