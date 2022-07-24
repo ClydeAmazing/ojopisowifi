@@ -10,7 +10,6 @@ from app.opw import api_response
 from app.tasks import toggle_slot
 from base64 import b64decode
 
-# This is a test change
 
 def is_ajax(request):
     return request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest'
@@ -245,7 +244,7 @@ class Portal(View):
                     coin_queue.save()
 
                 # Activate coinslot
-                # toggle_slot.delay(1, settings['slot_light_pin'])
+                toggle_slot.delay('ON', settings['slot_light_pin'])
 
                 messages.success(request, 'Please insert your coin(s).')
             
@@ -262,7 +261,7 @@ class Portal(View):
                 client.expire_slot()
 
                 # Deactivate coinslot
-                toggle_slot.delay(0, settings['slot_light_pin'])
+                toggle_slot.delay('OFF', settings['slot_light_pin'])
 
                 if total_coins > 0:
                     messages.success(request, f'₱{str(total_coins)} credited successfully. Enjoy Browsing')
@@ -279,7 +278,7 @@ class Portal(View):
                 client.expire_slot()
 
                 # Deactivate coinslot
-                # toggle_slot.delay(0, settings['slot_light_pin'])
+                toggle_slot.delay('OFF', settings['slot_light_pin'])
 
             except (models.Clients.DoesNotExist):
                 resp = api_response(700)
@@ -303,7 +302,7 @@ class Portal(View):
 
                 client.expire_slot()
                 # Deactivate coinslot
-                # toggle_slot.delay(0, settings['slot_light_pin'])
+                toggle_slot.delay('OFF', settings['slot_light_pin'])
 
                 messages.success(request, f'Voucher code {voucher.Voucher_code} successfully generated. The new code is added to your voucher list.', extra_tags="voucher_redeem")
             except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):

@@ -1,9 +1,15 @@
 from django.utils import timezone
 from celery import shared_task
 from app import models
-from app.opw import fprint
 from datetime import timedelta
 import requests, json, subprocess, ast, time
+
+import OPI.GPIO as GPIO
+import orangepi.one
+
+# GPIO setup
+GPIO.setmode(orangepi.one.BOARD)
+GPIO.setwarnings(False)
 
 @shared_task
 def built_in_payment(identifier, pulse):
@@ -79,9 +85,11 @@ def restart_system():
 
 @shared_task
 def toggle_slot(action, light_pin):
-    res = subprocess.run(['gpio', '-1', 'write', str(light_pin), str(action)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if res.stderr:
-        print(res.stderr.decode('utf-8'))
+    if action == 'ON':
+        GPIO.output(light_pin, GPIO.HIGH)
+        
+    if action == 'OFF':
+        GPIO.output(light_pin, GPIO.LOW)
 
 @shared_task
 def sweep():
