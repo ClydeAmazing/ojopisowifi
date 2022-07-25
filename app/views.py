@@ -244,8 +244,7 @@ class Portal(View):
                     coin_queue.save()
 
                 # Activate coinslot
-                # toggle_slot.delay('ON', settings['slot_light_pin'])
-                insert_coin.delay()
+                toggle_slot('ON', settings['slot_light_pin'])
 
                 messages.success(request, 'Please insert your coin(s).')
             
