@@ -115,8 +115,8 @@ def get_nds_status():
 
 def speedtest():
     ndsctl_res = subprocess.run("sudo speedtest", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    if ndsctl_res.stderr:
-        return ndsctl_res.stderr.decode('utf-8')
+    # if ndsctl_res.stderr:
+    #     return ndsctl_res.stderr.decode('utf-8')
 
     return ndsctl_res.stdout.decode('utf-8')
 
