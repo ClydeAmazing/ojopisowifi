@@ -84,16 +84,20 @@ def restart_system():
         print(res.stderr.decode('utf-8'))
 
 @shared_task
+def coinslot_countdown(seconds, light_pin):
+    sec = seconds
+
+    while GPIO.input(light_pin):
+        if sec <= 0:
+            GPIO.output(light_pin, GPIO.LOW)
+        sec -= 1
+
 def toggle_slot(action, light_pin):
     if action == 'ON':
         GPIO.output(light_pin, GPIO.HIGH)
 
     if action == 'OFF':
         GPIO.output(light_pin, GPIO.LOW)
-
-@shared_task
-def check_coinslot_status():
-    pass
 
 def pulse_detected():
 	global start_time
@@ -107,6 +111,8 @@ def insert_coin():
 
     input_pin = setting.Coinslot_Pin
     light_pin = setting.Light_Pin
+    slot_timeout = setting.Slot_Timeout
+
     COINSLOT_ID = 'n8cy3oKCKM'
 
     GPIO.setwarnings(False)
@@ -120,6 +126,11 @@ def insert_coin():
 
     GPIO.add_event_detect(input_pin, GPIO.RISING, pulse_detected)
 
+    # Activate coinslot
+    toggle_slot('ON', light_pin)
+
+    # Coinslot countdown
+    coinslot_countdown.delay(slot_timeout, light_pin)
     try:		
         while True:
             if GPIO.input(light_pin):

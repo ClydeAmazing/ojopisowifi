@@ -262,7 +262,7 @@ class Portal(View):
                 client.expire_slot()
 
                 # Deactivate coinslot
-                toggle_slot.delay('OFF', settings['slot_light_pin'])
+                toggle_slot('OFF', settings['slot_light_pin'])
 
                 if total_coins > 0:
                     messages.success(request, f'₱{str(total_coins)} credited successfully. Enjoy Browsing')
@@ -279,7 +279,7 @@ class Portal(View):
                 client.expire_slot()
 
                 # Deactivate coinslot
-                toggle_slot.delay('OFF', settings['slot_light_pin'])
+                toggle_slot('OFF', settings['slot_light_pin'])
 
             except (models.Clients.DoesNotExist):
                 resp = api_response(700)
@@ -302,8 +302,9 @@ class Portal(View):
                 coin_queue.delete()
 
                 client.expire_slot()
+
                 # Deactivate coinslot
-                toggle_slot.delay('OFF', settings['slot_light_pin'])
+                toggle_slot('OFF', settings['slot_light_pin'])
 
                 messages.success(request, f'Voucher code {voucher.Voucher_code} successfully generated. The new code is added to your voucher list.', extra_tags="voucher_redeem")
             except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):
