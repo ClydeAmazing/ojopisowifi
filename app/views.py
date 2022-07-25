@@ -7,7 +7,7 @@ from django.db.models import F
 from datetime import timedelta
 from app import models
 from app.opw import api_response
-from app.tasks import toggle_slot
+from app.tasks import toggle_slot, insert_coin
 from base64 import b64decode
 
 
@@ -244,7 +244,8 @@ class Portal(View):
                     coin_queue.save()
 
                 # Activate coinslot
-                toggle_slot.delay('ON', settings['slot_light_pin'])
+                # toggle_slot.delay('ON', settings['slot_light_pin'])
+                insert_coin.delay()
 
                 messages.success(request, 'Please insert your coin(s).')
             
