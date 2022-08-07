@@ -7,9 +7,30 @@ from django.db.models import F
 from datetime import timedelta
 from app import models
 from app.opw import api_response
-from app.tasks import toggle_slot
+from app.tasks import toggle_slot, insert_coin
 from base64 import b64decode
+from  threading import Thread as BaseThread
+from django.db import close_old_connections, connections
 
+
+class Thread(BaseThread):
+    def start(self):
+        close_old_connections()
+        super().start()
+
+    def __init__(self, client_id, slot_light_pin):
+        self.client_id = client_id
+        self.slot_light_pin = slot_light_pin
+        BaseThread.__init__(self)
+
+    def run(self):
+        insert_coin(self.client_id, self.slot_light_pin)
+
+    # TODO: would be nice if there was a place to hook in after run exits that
+    # doesn't require overriding a _ method.
+    def _bootstrap_inner(self):
+        super()._bootstrap_inner()
+        close_old_connections()
 
 def is_ajax(request):
     return request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest'
@@ -71,7 +92,13 @@ def getClientInfo(ip, mac, fas):
 
         notif_id = client.Notification_ID
 
-        is_inserting, _, slot_remaining_time = client.is_inserting_coin()
+        try:
+            slot = client.coin_slot.latest()
+            info['insert_coin'] = True if not slot.is_available and slot.Client == client else False
+            info['slot_remaining_time'] = slot.available_in_seconds
+        except models.CoinSlot.DoesNotExist:
+            info['insert_coin'] = False
+            info['slot_remaining_time'] = 0
 
     info['ip'] = ip
     info['mac'] = mac
@@ -82,8 +109,6 @@ def getClientInfo(ip, mac, fas):
     info['total_coins'] = total_coins
     info['vouchers'] = vouchers
     info['appNotification_ID'] = notif_id
-    info['insert_coin'] = is_inserting
-    info['slot_remaining_time'] = slot_remaining_time
     return info
 
 def getSettings():
@@ -220,18 +245,15 @@ class Portal(View):
                 # TODO: Make this coinslot assignment dynamic
                 coinslot = models.CoinSlot.objects.get(id=1)
 
-                if not coinslot.Client or coinslot.Client == client: 
+                if coinslot.is_available or coinslot.Client == client:
                     coinslot.Client = client
+                    coinslot.Last_Updated = timezone.now()
                     coinslot.save()
+
                 else:
-                    time_diff = timedelta.total_seconds(timezone.now()-coinslot.Last_Updated)
-                    if timedelta(seconds=time_diff).total_seconds() > settings['slot_timeout']:
-                        coinslot.Client = client
-                        coinslot.save()
-                    else:
-                        resp = api_response(600)
-                        messages.error(request, resp['description'])
-                        success = False
+                    resp = api_response(600)
+                    messages.error(request, resp['description'])
+                    success = False
 
             except models.Clients.DoesNotExist:
                 resp = api_response(500)
@@ -244,7 +266,11 @@ class Portal(View):
                     coin_queue.save()
 
                 # Activate coinslot
-                toggle_slot('ON', settings['slot_light_pin'])
+                # toggle_slot('ON', settings['slot_light_pin'])
+                # insert_coin.delay(client.id, settings['slot_light_pin'])
+                thread = Thread(client.id, settings['slot_light_pin'])
+                thread.start()
+
 
                 messages.success(request, 'Please insert your coin(s).')
             
@@ -254,35 +280,41 @@ class Portal(View):
             try:
                 client = models.Clients.objects.get(MAC_Address=mac)
 
-                coin_queue = models.CoinQueue.objects.get(Client=client)
+                coin_queue = client.coin_queue
                 total_coins = coin_queue.Total_Coins
                 coin_queue.Claim_Queue()
 
-                client.expire_slot()
+                try:
+                    slot = client.coin_slot.latest()
+                    slot.expire_slot()
+                except models.CoinSlot.DoesNotExist:
+                    pass
 
                 # Deactivate coinslot
-                toggle_slot('OFF', settings['slot_light_pin'])
+                # toggle_slot('OFF', settings['slot_light_pin'])
 
                 if total_coins > 0:
                     messages.success(request, f'₱{str(total_coins)} credited successfully. Enjoy Browsing')
 
             except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):
-                resp = api_response(700)
-                messages.error(request, resp['description'])
+                pass
 
             return redirect('app:portal')
 
         if 'done' in request.POST:
             try:
                 client = models.Clients.objects.get(MAC_Address=mac)
-                client.expire_slot()
+                # client.expire_slot()
+                slot = client.coin_slot.latest()
+                slot.expire_slot()
 
                 # Deactivate coinslot
-                toggle_slot('OFF', settings['slot_light_pin'])
+                # toggle_slot('OFF', settings['slot_light_pin'])
 
-            except (models.Clients.DoesNotExist):
-                resp = api_response(700)
-                messages.error(request, resp['description'])
+            except (models.Clients.DoesNotExist, models.CoinSlot.DoesNotExist):
+                pass
+                # resp = api_response(700)
+                # messages.error(request, resp['description'])
 
             return redirect('app:portal')
 
@@ -352,17 +384,16 @@ class Commit(View):
             try:
                 client = models.Clients.objects.get(FAS_Session=fas)
                 try:
-                    is_inserting, _, slot_remaining_time = client.is_inserting_coin()
+                    slot = client.coin_slot.latest()
 
-                    if is_inserting:
+                    if not slot.is_available:
                         data['Status'] = 'Not Available'
-                        data['Timeout'] = slot_remaining_time
-
+                        data['Timeout'] = slot.available_in_seconds
                     else:
                         data['Status'] = 'Available'
                         data['Timeout'] = 0
 
-                    queue = models.CoinQueue.objects.get(Client=client)
+                    queue = client.coin_queue
 
                     data['Total_Coins'] = queue.Total_Coins
                     data['Total_Time'] = int(timedelta.total_seconds(queue.Total_Time))

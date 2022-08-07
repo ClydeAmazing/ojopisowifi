@@ -85,6 +85,22 @@ def toggle_slot(action, light_pin):
     subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 @shared_task
+def insert_coin(client_id, slot_light_pin):
+    slot_available = False
+    print('Turn on light')
+    while not slot_available:
+        try:
+            client = models.Clients.objects.get(id=client_id)
+            slot = client.coin_slot.latest()
+
+            slot_available = slot.is_available
+
+        except (models.Clients.DoesNotExist, models.CoinSlot.DoesNotExist):
+            slot_available = True
+        time.sleep(1)
+    print('Turn off light')
+
+@shared_task
 def sweep():
     models.Device.objects.get(pk=1).save()
 

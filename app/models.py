@@ -4,7 +4,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import duration
-import string, random, os, math
+import string, random, os, math, uuid
 
 class Settings(models.Model):
     rate_type_choices = (
@@ -84,28 +84,9 @@ class Clients(models.Model):
             else:
                 return 'Disconnected'
 
-    def is_inserting_coin(self):
-        coinslot = CoinSlot.objects.filter(Client=self).order_by('-Last_Updated').first()
-        slot_timeout = self.Settings.Slot_Timeout
-
-        if coinslot and timedelta.total_seconds(timezone.now()-coinslot.Last_Updated) < slot_timeout :
-            remaining_time = slot_timeout - timedelta.total_seconds(timezone.now()-coinslot.Last_Updated)
-            return True, coinslot, remaining_time
-        else:
-            return False, None, 0
-
-    def expire_slot(self):
-        coinslot = CoinSlot.objects.filter(Client=self).order_by('-Last_Updated').first()
-        if coinslot:
-            coinslot.Client = None
-            coinslot.save()
-
     def credit_amount(self, amount):
-        is_inserting, coinslot, _ = self.is_inserting_coin()
-        if is_inserting:
-            self.coin_queue.Total_Coins += amount
-            self.coin_queue.save()
-            coinslot.save() 
+        self.coin_queue.Total_Coins += amount
+        self.coin_queue.save()
 
     def Connect(self, add_time = timedelta(0)):
         total_time = self.Time_Left + add_time
@@ -188,34 +169,47 @@ class CoinSlot(models.Model):
         (1, 'Sub Vendo')
     )
 
-    def generate_code(self, size=10):
-        found = False
-        random_code = None
-
-        while not found:
-            random_code = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(size))
-            count = CoinSlot.objects.filter(Slot_ID=random_code).count()
-            if count == 0:
-                found = True
-
-        return random_code
-
-    Edit = 'Edit'
     Client = models.ForeignKey(Clients, on_delete=models.SET_NULL, null=True, blank=True, related_name='coin_slot')
+    Setting = models.ForeignKey(Settings, on_delete=models.CASCADE)
     Type = models.IntegerField(default=1, choices=TYPE_CHOICES)
-    Slot_ID = models.CharField(unique=True, max_length=10)
+    Slot_ID = models.UUIDField(unique=True, default=uuid.uuid4)
     Slot_Address = models.CharField(unique=True, max_length=17, default='00:00:00:00:00:00')
     Slot_Desc = models.CharField(max_length=50, null=True, blank=True, verbose_name='Description')
-    Last_Updated = models.DateTimeField(null=True, blank=True, auto_now=True)
+    Last_Updated = models.DateTimeField(null=True, blank=True, auto_now_add=True)
+
+    @property
+    def available_in_seconds(self):
+        slot_timeout = self.Setting.Slot_Timeout
+
+        time_since_last_updated = timedelta.total_seconds(timezone.now()-self.Last_Updated)
+        remaining_time = slot_timeout - time_since_last_updated
+
+        return 0 if remaining_time <= 0 else remaining_time
+
+    @property
+    def is_available(self):
+        slot_timeout = self.Setting.Slot_Timeout
+        time_since_last_updated = timedelta.total_seconds(timezone.now()-self.Last_Updated)
+
+        if time_since_last_updated >= slot_timeout or not self.Client:
+            return True
+        else:
+            return False
+
+    def expire_slot(self):
+        self.Client = None
+        self.Last_Updated = timezone.now()
+        self.save()
 
     def save(self, *args, **kwargs):
         if self._state.adding:
-            self.Voucher_code = self.generate_code()
+            self.Slot_ID = self.generate_code()
         super(CoinSlot, self).save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Coin Slot'
         verbose_name_plural = 'Coin Slot'
+        get_latest_by = 'Last_Updated'
 
     def __str__(self):
         return 'Slot no: ' + str(self.pk)
@@ -265,6 +259,17 @@ class CoinQueue(models.Model):
             total_time = base_value * total_coins
         
         return total_time
+
+    def add_to_queue(self, denom):
+        self.Total_Coins += denom
+        self.save()
+
+        try:
+            slot = self.Client.coin_slot.latest()
+            slot.Last_Updated = timezone.now()
+            slot.save()
+        except (Clients.DoesNotExist, CoinSlot.DoesNotExist):
+            pass
 
     def Claim_Queue(self):
         if self.Total_Coins > 0:

@@ -9,14 +9,11 @@ from app.opw import cc, grc, get_nds_status, speedtest
 
 from django.contrib.auth.models import User, Group
 
-import subprocess, ast
-
 def client_check(request):
     if request.user.is_superuser:
         return True
     else:
         return cc()
-
 
 class MyAdminSite(admin.AdminSite):
     def dashboard_data(self, device):
@@ -116,7 +113,6 @@ class MyAdminSite(admin.AdminSite):
 
         return super(MyAdminSite, self).index(request, extra_context=extra_context)
 
-
 ojo_admin = MyAdminSite()
 
 class Singleton(admin.ModelAdmin):
@@ -141,7 +137,7 @@ class Singleton(admin.ModelAdmin):
 class ClientsAdmin(admin.ModelAdmin):
     form = forms.ClientsForm
     list_display = ('IP_Address', 'MAC_Address', 'Device_Name', 'Connection_Status', 'Time_Left', 'running_time')
-    readonly_fields = ('IP_Address', 'MAC_Address', 'Connected_On', 'Expire_On', 'Notification_ID', 'Notified_Flag', 'Date_Created')
+    readonly_fields = ('IP_Address', 'MAC_Address', 'Connected_On', 'Expire_On', 'Notification_ID', 'Notified_Flag', 'Date_Created', 'id', 'FAS_Session')
     actions = ['Connect', 'Disconnect', 'Pause', 'Whitelist']
     exclude = ('Settings', 'FAS_Session')
 
@@ -203,8 +199,19 @@ class WhitelistAdmin(admin.ModelAdmin):
 
 class CoinSlotAdmin(admin.ModelAdmin):
     form = forms.CoinSlotForm
-    list_display = ('Edit', 'Slot_ID', 'Slot_Desc')
-    readonly_fields = ('Slot_ID', 'Client')
+    list_display = ('Slot_ID', 'Slot_Desc', 'Client', '_is_available')
+    readonly_fields = ('Slot_ID', )
+
+    @admin.display(description='Available', boolean=True)
+    def _is_available(self, obj):
+        return obj.is_available
+
+    def message_user(self, *args):
+        pass
+
+    def save_model(self, request, obj, form, change):
+        messages.add_message(request, messages.INFO, f'Slot ID: {obj.Slot_ID} updated successfully.')
+        super(CoinSlotAdmin, self).save_model(request, obj, form, change)
 
 class LedgerAdmin(admin.ModelAdmin):
     list_display = ('Date', 'Client', 'Denomination', 'Slot_No')
@@ -270,6 +277,13 @@ class NetworkAdmin(Singleton, admin.ModelAdmin):
 
 class CoinQueueAdmin(admin.ModelAdmin):
     list_display = ('Client', 'Total_Coins', 'Total_Time')
+
+    def message_user(self, *args):
+        pass
+
+    def save_model(self, request, obj, form, change):
+        messages.add_message(request, messages.INFO, f'Coin queue for client {obj.Client} updated successfully.')
+        super(CoinQueueAdmin, self).save_model(request, obj, form, change)
 
 class RatesAdmin(admin.ModelAdmin):
     form = forms.RatesForm
