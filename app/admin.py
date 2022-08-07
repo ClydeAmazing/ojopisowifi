@@ -9,6 +9,7 @@ from app.opw import cc, grc, get_nds_status, speedtest
 
 from django.contrib.auth.models import User, Group
 
+
 def client_check(request):
     if request.user.is_superuser:
         return True
@@ -115,6 +116,16 @@ class MyAdminSite(admin.AdminSite):
 
 ojo_admin = MyAdminSite()
 
+class NoLog:
+    def log_addition(self, *args):
+        pass
+
+    def log_change(self, *args):
+        pass
+
+    def log_deletion(sefl, *args):
+        pass
+
 class Singleton(admin.ModelAdmin):
     change_form_template  = 'singleton_change_form.html'
 
@@ -134,7 +145,7 @@ class Singleton(admin.ModelAdmin):
         ]
         return custom_urls + urls
 
-class ClientsAdmin(admin.ModelAdmin):
+class ClientsAdmin(NoLog, admin.ModelAdmin):
     form = forms.ClientsForm
     list_display = ('IP_Address', 'MAC_Address', 'Device_Name', 'Connection_Status', 'Time_Left', 'running_time')
     readonly_fields = ('IP_Address', 'MAC_Address', 'Connected_On', 'Expire_On', 'Notification_ID', 'Notified_Flag', 'Date_Created', 'id', 'FAS_Session')
@@ -190,14 +201,14 @@ class ClientsAdmin(admin.ModelAdmin):
             else:
                 messages.add_message(request, messages.WARNING, 'Device {} was already added on the whitelisted devices'.format(device_name))
 
-class WhitelistAdmin(admin.ModelAdmin):
+class WhitelistAdmin(NoLog, admin.ModelAdmin):
     list_display = ('MAC_Address', 'Device_Name')
 
     def changelist_view(self, request, extra_context=None):
         extra_context = {'title': 'Whitelisted Devices'}
         return super(WhitelistAdmin, self).changelist_view(request, extra_context=extra_context)
 
-class CoinSlotAdmin(admin.ModelAdmin):
+class CoinSlotAdmin(NoLog, admin.ModelAdmin):
     form = forms.CoinSlotForm
     list_display = ('Slot_ID', 'Slot_Desc', 'Client', '_is_available')
     readonly_fields = ('Slot_ID', )
@@ -213,7 +224,7 @@ class CoinSlotAdmin(admin.ModelAdmin):
         messages.add_message(request, messages.INFO, f'Slot ID: {obj.Slot_ID} updated successfully.')
         super(CoinSlotAdmin, self).save_model(request, obj, form, change)
 
-class LedgerAdmin(admin.ModelAdmin):
+class LedgerAdmin(NoLog, admin.ModelAdmin):
     list_display = ('Date', 'Client', 'Denomination', 'Slot_No')
     list_filter = ('Client', 'Date')
 
@@ -224,7 +235,7 @@ class LedgerAdmin(admin.ModelAdmin):
         extra_context = {'title': 'Transaction Ledger'}
         return super(LedgerAdmin, self).changelist_view(request, extra_context=extra_context)
 
-class SettingsAdmin(Singleton, admin.ModelAdmin):
+class SettingsAdmin(NoLog, Singleton, admin.ModelAdmin):
     form = forms.SettingsForm
     list_display = ('Hotspot_Name', 'Hotspot_Address', 'Slot_Timeout', 'Rate_Type', 'Base_Value', 'Inactive_Timeout', 'Coinslot_Pin', 'Light_Pin')
 
@@ -249,7 +260,7 @@ class SettingsAdmin(Singleton, admin.ModelAdmin):
         messages.add_message(request, messages.INFO, 'Wifi Settings updated successfully.')
         super(SettingsAdmin, self).save_model(request, obj, form, change)
 
-class NetworkAdmin(Singleton, admin.ModelAdmin):
+class NetworkAdmin(NoLog, Singleton, admin.ModelAdmin):
     # form = forms.NetworkForm
     list_display = ('Edit', 'Upload_Rate', 'Download_Rate')
     exclude = ('Server_IP', 'Netmask', 'DNS_1', 'DNS_2')
@@ -275,7 +286,7 @@ class NetworkAdmin(Singleton, admin.ModelAdmin):
         messages.add_message(request, messages.INFO, 'Global Network Settings updated successfully.')
         super(NetworkAdmin, self).save_model(request, obj, form, change)
 
-class CoinQueueAdmin(admin.ModelAdmin):
+class CoinQueueAdmin(NoLog, admin.ModelAdmin):
     list_display = ('Client', 'Total_Coins', 'Total_Time')
 
     def message_user(self, *args):
@@ -285,7 +296,7 @@ class CoinQueueAdmin(admin.ModelAdmin):
         messages.add_message(request, messages.INFO, f'Coin queue for client {obj.Client} updated successfully.')
         super(CoinQueueAdmin, self).save_model(request, obj, form, change)
 
-class RatesAdmin(admin.ModelAdmin):
+class RatesAdmin(NoLog, admin.ModelAdmin):
     form = forms.RatesForm
     list_display = ('Edit', 'Denom', 'Minutes', 'Minutes_Auto')
     field_order = ('Minutes', 'Denom')
@@ -305,7 +316,7 @@ class RatesAdmin(admin.ModelAdmin):
         messages.add_message(request, messages.INFO, 'Wifi Rates updated successfully.')
         super(RatesAdmin, self).save_model(request, obj, form, change)
 
-class DeviceAdmin(Singleton, admin.ModelAdmin):
+class DeviceAdmin(NoLog, Singleton, admin.ModelAdmin):
     list_display = ('Device_SN', 'Ethernet_MAC')
     readonly_fields = ('Ethernet_MAC', 'Device_SN', 'pub_rsa', 'ca')
     # exclude = ('action',)
@@ -323,7 +334,7 @@ class DeviceAdmin(Singleton, admin.ModelAdmin):
         messages.add_message(request, messages.INFO, 'Hardware Settings updated successfully.')
         super(DeviceAdmin, self).save_model(request, obj, form, change)
 
-class VouchersAdmin(admin.ModelAdmin):
+class VouchersAdmin(NoLog, admin.ModelAdmin):
     form = forms.VouchersForm
     list_display = ('Voucher_code', 'Voucher_status', 'Voucher_client', 'Voucher_create_date_time', 'Voucher_used_date_time', 'Voucher_time_value')
     readonly_fields = ('Voucher_code', 'Voucher_used_date_time')
@@ -339,7 +350,7 @@ class VouchersAdmin(admin.ModelAdmin):
         else:
             return False
 
-class PushNotificationsAdmin(Singleton, admin.ModelAdmin):
+class PushNotificationsAdmin(NoLog, Singleton, admin.ModelAdmin):
     form = forms.PushNotifForm
     list_display = ('Enabled', 'notification_title', 'notification_message', 'notification_trigger_time')
 

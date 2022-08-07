@@ -10,7 +10,7 @@ from app.opw import api_response
 from app.tasks import toggle_slot, insert_coin
 from base64 import b64decode
 from  threading import Thread as BaseThread
-from django.db import close_old_connections, connections
+from django.db import close_old_connections
 
 
 class Thread(BaseThread):
@@ -406,3 +406,44 @@ class Commit(View):
                 data['Status'] = 'Error'
 
             return JsonResponse(data)
+
+class Clients(View):
+    def get(self, request):
+        models.Device.objects.get(pk=1).save()
+
+        clients = models.Clients.objects.all()
+
+        network_settings = models.Network.objects.get(pk=1)
+        global_upload_rate = network_settings.Upload_Rate
+        global_download_rate = network_settings.Download_Rate
+
+        for client in clients:
+            if client.Connection_Status == 'Disconnected':
+                expire_datetime = client.Expire_On if client.Expire_On else client.Date_Created
+                diff = timezone.now() - expire_datetime
+
+                if diff > timedelta(minutes=client.Settings.Inactive_Timeout):
+                    client.delete()
+
+        connected_client_list = {
+            c.MAC_Address:{
+                'u': c.Upload_Rate if c.Upload_Rate > 0 else global_upload_rate,
+                'd': c.Download_Rate if c.Download_Rate > 0 else global_download_rate,
+            }
+            for c in clients if c.Connection_Status == 'Connected'
+        }
+
+        whitelists = models.Whitelist.objects.all()
+
+        connected_clients = [c for c in connected_client_list]
+        whitelisted_clients = [c.MAC_Address for c in whitelists]
+
+        all_connected_clients = set(connected_clients).union(whitelisted_clients)
+        
+        context = {
+                'clients': connected_client_list,
+                'whitelisted': whitelisted_clients,
+            }
+
+        return JsonResponse(context)
+        
