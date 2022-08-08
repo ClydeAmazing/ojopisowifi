@@ -8,8 +8,9 @@ from datetime import timedelta
 from app import models
 from app.opw import api_response
 from app.tasks import toggle_slot, insert_coin
+from app.utils import get_active_clients
 from base64 import b64decode
-from  threading import Thread as BaseThread
+from threading import Thread as BaseThread
 from django.db import close_old_connections
 
 
@@ -26,8 +27,6 @@ class Thread(BaseThread):
     def run(self):
         insert_coin(self.client_id, self.slot_light_pin)
 
-    # TODO: would be nice if there was a place to hook in after run exits that
-    # doesn't require overriding a _ method.
     def _bootstrap_inner(self):
         super()._bootstrap_inner()
         close_old_connections()
@@ -68,14 +67,13 @@ def getClientInfo(ip, mac, fas):
                 client.save()
 
         try:
-            coin_queue = models.CoinQueue.objects.get(Client=client)
-            total_coins = coin_queue.Total_Coins
+            total_coins = client.coin_queue.Total_Coins
 
         except models.CoinQueue.DoesNotExist:
             total_coins = 0
 
         try:
-            vouchers = models.Vouchers.objects.filter(Voucher_client=client, Voucher_status='Not Used')
+            vouchers = client.voucher_code.filter(Voucher_status='Not Used')
         except models.Vouchers.DoesNotExist:
             vouchers = None
 
@@ -105,7 +103,7 @@ def getClientInfo(ip, mac, fas):
     info['whitelisted'] = whitelisted_flg
     info['status'] = status
     info['time_left'] = timedelta.total_seconds(time_left)
-    info['total_time'] = client.total_time
+    info['total_time'] = client.total_time if not whitelisted_flg else 0
     info['total_coins'] = total_coins
     info['vouchers'] = vouchers
     info['appNotification_ID'] = notif_id
@@ -230,7 +228,6 @@ class Portal(View):
                     return redirect('app:portal')
 
             except models.Clients.DoesNotExist:
-                # Maybe redirect to Opennds gateway
 
                 resp = api_response(800)
                 messages.error(request, resp['description'])
@@ -265,12 +262,8 @@ class Portal(View):
                 if not created:
                     coin_queue.save()
 
-                # Activate coinslot
-                # toggle_slot('ON', settings['slot_light_pin'])
-                # insert_coin.delay(client.id, settings['slot_light_pin'])
                 thread = Thread(client.id, settings['slot_light_pin'])
                 thread.start()
-
 
                 messages.success(request, 'Please insert your coin(s).')
             
@@ -290,9 +283,6 @@ class Portal(View):
                 except models.CoinSlot.DoesNotExist:
                     pass
 
-                # Deactivate coinslot
-                # toggle_slot('OFF', settings['slot_light_pin'])
-
                 if total_coins > 0:
                     messages.success(request, f'₱{str(total_coins)} credited successfully. Enjoy Browsing')
 
@@ -304,43 +294,37 @@ class Portal(View):
         if 'done' in request.POST:
             try:
                 client = models.Clients.objects.get(MAC_Address=mac)
-                # client.expire_slot()
+
                 slot = client.coin_slot.latest()
                 slot.expire_slot()
 
-                # Deactivate coinslot
-                # toggle_slot('OFF', settings['slot_light_pin'])
-
             except (models.Clients.DoesNotExist, models.CoinSlot.DoesNotExist):
                 pass
-                # resp = api_response(700)
-                # messages.error(request, resp['description'])
 
             return redirect('app:portal')
 
         if 'generate' in request.POST:
             try:
                 client = models.Clients.objects.get(MAC_Address=mac)
-                coin_queue = models.CoinQueue.objects.get(Client=client)
-                total_time = coin_queue.Total_Time
+                coin_queue = client.coin_queue
                 
                 voucher = models.Vouchers()
-                voucher.Voucher_status = 'Not Used'
                 voucher.Voucher_client = client
-                voucher.Voucher_time_value = total_time
+                voucher.Voucher_time_value = coin_queue.Total_Time
                 voucher.save()
 
                 coin_queue.delete()
 
-                client.expire_slot()
-
-                # Deactivate coinslot
-                toggle_slot('OFF', settings['slot_light_pin'])
+                try:
+                    slot = client.coin_slot.latest()
+                    slot.expire_slot()
+                except models.CoinSlot.DoesNotExist:
+                    pass
 
                 messages.success(request, f'Voucher code {voucher.Voucher_code} successfully generated. The new code is added to your voucher list.', extra_tags="voucher_redeem")
+            
             except (models.Clients.DoesNotExist, models.CoinQueue.DoesNotExist):
-                resp = api_response(700)
-                messages.error(request, resp['description'])
+                pass
 
             return redirect('app:portal')  
 
@@ -409,41 +393,6 @@ class Commit(View):
 
 class Clients(View):
     def get(self, request):
-        models.Device.objects.get(pk=1).save()
-
-        clients = models.Clients.objects.all()
-
-        network_settings = models.Network.objects.get(pk=1)
-        global_upload_rate = network_settings.Upload_Rate
-        global_download_rate = network_settings.Download_Rate
-
-        for client in clients:
-            if client.Connection_Status == 'Disconnected':
-                expire_datetime = client.Expire_On if client.Expire_On else client.Date_Created
-                diff = timezone.now() - expire_datetime
-
-                if diff > timedelta(minutes=client.Settings.Inactive_Timeout):
-                    client.delete()
-
-        connected_client_list = {
-            c.MAC_Address:{
-                'u': c.Upload_Rate if c.Upload_Rate > 0 else global_upload_rate,
-                'd': c.Download_Rate if c.Download_Rate > 0 else global_download_rate,
-            }
-            for c in clients if c.Connection_Status == 'Connected'
-        }
-
-        whitelists = models.Whitelist.objects.all()
-
-        connected_clients = [c for c in connected_client_list]
-        whitelisted_clients = [c.MAC_Address for c in whitelists]
-
-        all_connected_clients = set(connected_clients).union(whitelisted_clients)
-        
-        context = {
-                'clients': connected_client_list,
-                'whitelisted': whitelisted_clients,
-            }
-
+        context = get_active_clients()
         return JsonResponse(context)
         

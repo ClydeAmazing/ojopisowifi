@@ -48,8 +48,8 @@ class Clients(models.Model):
     Time_Left = models.DurationField(default=timezone.timedelta(minutes=0))
     Connected_On = models.DateTimeField(null=True, blank=True)
     Expire_On = models.DateTimeField(null=True, blank=True)
-    Upload_Rate = models.IntegerField(verbose_name='Upload Bandwidth', help_text='Specify client internet upload bandwidth in Kbps. No value = unlimited bandwidth', default=0)
-    Download_Rate = models.IntegerField(verbose_name='Download Bandwidth', help_text='Specify client internet download bandwidth in Kbps. No value = unlimited bandwidth', default=0)
+    Upload_Rate = models.IntegerField(help_text='Specify client internet upload bandwidth in Kbps. No value = unlimited bandwidth', default=0)
+    Download_Rate = models.IntegerField(help_text='Specify client internet download bandwidth in Kbps. No value = unlimited bandwidth', default=0)
     Notification_ID = models.CharField(verbose_name = 'Notification ID', max_length=255, null=True, blank = True)
     Notified_Flag = models.BooleanField(default=False)
     Date_Created = models.DateTimeField(auto_now_add=True)
@@ -141,6 +141,8 @@ class Clients(models.Model):
 class Whitelist(models.Model):
     MAC_Address = models.CharField(max_length=255, verbose_name='MAC', unique=True)
     Device_Name = models.CharField(max_length=255, null=True, blank=True)
+    Upload_Rate = models.IntegerField(help_text='Specify client internet upload bandwidth in Kbps. No value = unlimited bandwidth', default=0)
+    Download_Rate = models.IntegerField(help_text='Specify client internet download bandwidth in Kbps. No value = unlimited bandwidth', default=0)
 
     class Meta:
         verbose_name = 'Allowed Client'

@@ -116,7 +116,7 @@ class MyAdminSite(admin.AdminSite):
 
 ojo_admin = MyAdminSite()
 
-class NoLog:
+class NoLog(admin.ModelAdmin):
     def log_addition(self, *args):
         pass
 
@@ -193,7 +193,7 @@ class ClientsAdmin(NoLog, admin.ModelAdmin):
 
     def Whitelist(self, request, queryset):      
         for obj in queryset:
-            device, created = models.Whitelist.objects.get_or_create(MAC_Address=obj.MAC_Address, defaults={'Device_Name': obj.Device_Name})
+            device, created = models.Whitelist.objects.get_or_create(MAC_Address=obj.MAC_Address, defaults={'Device_Name': obj.Device_Name, 'Upload_Rate': obj.Upload_Rate, 'Download_Rate': obj.Download_Rate})
             device_name = obj.MAC_Address if not obj.Device_Name else obj.Device_Name
             if created:
                 messages.add_message(request, messages.SUCCESS, 'Device {} is sucessfully added to whitelisted devices'.format(device_name))
@@ -386,7 +386,7 @@ ojo_admin.register(models.Rates, RatesAdmin)
 ojo_admin.register(models.Device, DeviceAdmin)
 ojo_admin.register(models.Vouchers, VouchersAdmin)
 ojo_admin.register(models.PushNotifications, PushNotificationsAdmin)
-ojo_admin.register(User)
-ojo_admin.register(Group)
+ojo_admin.register(User, NoLog)
+ojo_admin.register(Group, NoLog)
 
 ojo_admin.index_template = 'admin/ojo_index.html'

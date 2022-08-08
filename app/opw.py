@@ -115,42 +115,5 @@ def get_nds_status():
 
 def speedtest():
     ndsctl_res = subprocess.run("sudo speedtest", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    # if ndsctl_res.stderr:
-    #     return ndsctl_res.stderr.decode('utf-8')
 
     return ndsctl_res.stdout.decode('utf-8')
-
-def credit_pulse(slot_id, pulse):
-    try:
-        slot_info = models.CoinSlot.objects.get(Slot_ID=slot_id)
-    except models.CoinSlot.DoesNotExist:
-        resp = api_response(400)
-    else:
-        try:
-            rates = models.Rates.objects.get(Pulse=pulse)
-        except models.Rates.DoesNotExist:
-            resp = api_response(900)
-        else:
-            connected_client = slot_info.Client
-            is_inserting = False
-
-            if connected_client:
-                is_inserting, _, _ = connected_client.is_inserting_coin()
-
-            if is_inserting:
-                ledger = models.Ledger()
-                ledger.Client = connected_client
-                ledger.Denomination = rates.Denom
-                ledger.Slot_No = slot_info.pk
-                ledger.save()
-
-                q, _ = models.CoinQueue.objects.get_or_create(Client=connected_client)
-                q.Total_Coins += rates.Denom
-                q.save()
-
-                slot_info.save()
-
-                resp = api_response(200)
-            else:
-                resp = api_response(300)
-    return resp
