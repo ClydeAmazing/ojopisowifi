@@ -45,6 +45,7 @@ def getClientInfo(ip, mac, fas):
         total_coins = 0
         notif_id = ''
         vouchers = None
+        slot_remaining_time = 0
 
     else:
         default_values = {
@@ -93,10 +94,10 @@ def getClientInfo(ip, mac, fas):
         try:
             slot = client.coin_slot.latest()
             info['insert_coin'] = True if not slot.is_available and slot.Client == client else False
-            info['slot_remaining_time'] = slot.available_in_seconds
+            slot_remaining_time = slot.available_in_seconds
         except models.CoinSlot.DoesNotExist:
             info['insert_coin'] = False
-            info['slot_remaining_time'] = 0
+            slot_remaining_time = 0
 
     info['ip'] = ip
     info['mac'] = mac
@@ -107,6 +108,7 @@ def getClientInfo(ip, mac, fas):
     info['total_coins'] = total_coins
     info['vouchers'] = vouchers
     info['appNotification_ID'] = notif_id
+    info['slot_remaining_time'] = slot_remaining_time
     return info
 
 def getSettings():
