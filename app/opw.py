@@ -1,6 +1,7 @@
 from cryptography.fernet import Fernet
 from base64 import b64decode
 from app import models
+from app.utils import run_command
 import json, rsa, subprocess
 
 def api_response(code):
@@ -117,3 +118,11 @@ def speedtest():
     ndsctl_res = subprocess.run("sudo speedtest", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
     return ndsctl_res.stdout.decode('utf-8')
+
+def shutdown_system():
+    res = run_command(['sudo', 'poweroff'])
+    return res
+
+def restart_system():
+    res = run_command(['sudo', 'reboot'])
+    return res

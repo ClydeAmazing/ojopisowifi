@@ -62,14 +62,6 @@ def send_push_notif():
     except Exception:
         pass
 
-def shutdown_system():
-    res = run_command(['sudo', 'poweroff'])
-    return res
-
-def restart_system():
-    res = run_command(['sudo', 'reboot'])
-    return res
-
 def toggle_slot(action, light_pin):
     if action == 'ON':
         command = ['gpio', '-1', 'write', str(light_pin), str(1)]

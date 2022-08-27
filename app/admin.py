@@ -5,7 +5,7 @@ from django.db.models import Sum
 from django.db.models.functions import TruncMonth, TruncDate
 from django.urls import path
 from app import models, forms
-from app.opw import cc, grc, get_nds_status, speedtest
+from app.opw import cc, grc, get_nds_status, speedtest, shutdown_system, restart_system
 
 from django.contrib.auth.models import User, Group
 
@@ -60,12 +60,17 @@ class MyAdminSite(admin.AdminSite):
             if 'reset' in request.POST:
                 models.Ledger.objects.all().delete()
                 messages.success(request, 'Ledger is now cleared.')
+
             elif 'poweroff' in request.POST:
                 device.action = 1
                 device.save()
+                shutdown_system()
+
             elif 'reboot' in request.POST:
                 device.action = 2
                 device.save()
+                restart_system()
+                
             elif 'generate' in request.POST:
                 if not cc():
                     rc = grc()
