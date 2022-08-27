@@ -20,4 +20,4 @@ class Command(BaseCommand):
                     client.delete()
                     count += 1
 
-        print(f'Success! {count} clients purged')
+        print(f'Success! {count} client(s) purged')
