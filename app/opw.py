@@ -120,9 +120,9 @@ def speedtest():
     return ndsctl_res.stdout.decode('utf-8')
 
 def shutdown_system():
-    res = run_command(['sudo', 'poweroff'])
+    res = run_command(['sudo', '/usr/bin/systemctl', 'poweroff'])
     return res
 
 def restart_system():
-    res = run_command(['sudo', 'reboot'])
+    res = run_command(['sudo', '/usr/bin/systemctl', 'reboot'])
     return res
