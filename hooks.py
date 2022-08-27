@@ -15,15 +15,15 @@ from app.tasks import built_in_payment
 
 COINSLOT_ID = 'n8cy3oKCKM'
 
-def pulse_detected():
+def pulse_detected(ready=False):
 	global start_time
-	global pulse_count	
+	global pulse_count
+
+	if not ready:
+		return False
+
 	start_time = time.time()
 	pulse_count += 1
-
-def light_on():
-	global slot_start_time
-	slot_start_time = time.time()
 
 if __name__ == '__main__':
 	setting = Settings.objects.get(pk=1)
@@ -38,29 +38,22 @@ if __name__ == '__main__':
 
 	print('Started Listening to Coinslot')
 	start_time = time.time()
-	slot_start_time = time.time()
 
 	pulse_count = 0
 	max_elapsed_time = .5
 
-	GPIO.add_event_detect(input_pin, GPIO.RISING, pulse_detected)
-	GPIO.add_event_detect(light_pin, GPIO.RISING, light_on)
+	GPIO.add_event_detect(input_pin, GPIO.RISING, callback=lambda x: pulse_detected(GPIO.input(light_pin)))
 
 	if __name__ == '__main__':
 		try:		
 			while True:
 				if GPIO.input(light_pin):
-					slot_elapsed_time = time.time() - slot_start_time
-					if slot_elapsed_time > slot_timeout:
-						GPIO.output(light_pin, GPIO.OFF)
-					else:
-						slot_start_time = time.time()
-						elapsed_time = time.time() - start_time
-						if pulse_count > 0 and elapsed_time > max_elapsed_time:
-							built_in_payment.delay(COINSLOT_ID, pulse_count)
-							start_time = time.time()
-							pulse_count = 0
-				
+					elapsed_time = time.time() - start_time
+					if pulse_count > 0 and elapsed_time > max_elapsed_time:
+						built_in_payment.delay(COINSLOT_ID, pulse_count)
+						start_time = time.time()
+						pulse_count = 0
+
 				time.sleep(.01)
 
 		except Exception as e:
