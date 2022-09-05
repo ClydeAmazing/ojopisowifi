@@ -1,42 +1,6 @@
-from django.utils import timezone
 from app import models
 from app.utils import run_command
-from datetime import timedelta
-import requests, json, subprocess, ast, time
-
-def built_in_payment(identifier, pulse):
-    try:
-        slot_info = models.CoinSlot.objects.get(Slot_ID=identifier)
-    except models.CoinSlot.DoesNotExist:
-        return False
-    else:
-        try:
-            rates = models.Rates.objects.get(Pulse=pulse)
-        except models.Rates.DoesNotExist:
-            return False
-        else:
-            connected_client = slot_info.Client
-            is_inserting = False
-
-            if connected_client:
-                is_inserting, _, _ = connected_client.is_inserting_coin()
-
-            if is_inserting:
-                ledger = models.Ledger()
-                ledger.Client = connected_client
-                ledger.Denomination = rates.Denom
-                ledger.Slot_No = slot_info.pk
-                ledger.save()
-
-                q, _ = models.CoinQueue.objects.get_or_create(Client=connected_client)
-                q.Total_Coins += rates.Denom
-                q.save()
-
-                slot_info.save()
-
-                return True
-            else:
-                return False
+import requests, json, time
 
 def send_push_notif():
     try:
@@ -84,6 +48,7 @@ def insert_coin(client_id, slot_light_pin):
 
         except (models.Clients.DoesNotExist, models.CoinSlot.DoesNotExist):
             slot_available = True
+
         time.sleep(1)
 
     print('Turn off light')

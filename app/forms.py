@@ -46,6 +46,14 @@ class VouchersForm(forms.ModelForm):
 
 class SettingsForm(forms.ModelForm):
 
+	def clean(self):
+		cleaned_data = super().clean()
+		coinslot_pin = cleaned_data.get('Coinslot_Pin')
+		light_pin = cleaned_data.get('Light_Pin')
+		if coinslot_pin and light_pin:
+			if coinslot_pin == light_pin:
+				self.add_error(None, 'Coinslot Pin should not be the same as Light Pin.')
+
 	class Meta:
 		model = models.Settings
 		fields = '__all__'
@@ -84,7 +92,26 @@ class CoinSlotForm(forms.ModelForm):
 		fields = '__all__'
 
 class PushNotifForm(forms.ModelForm):
-	
+
+	def clean(self):
+		cleaned_data = super().clean()
+		if not cleaned_data.get('Enabled'):
+			return
+
+		required_msg = 'This field is required before push notification can be enabled.'
+		
+		if not cleaned_data.get('app_id'):
+			self.add_error('app_id', required_msg)
+
+		if not cleaned_data.get('notification_title'):
+			self.add_error('notification_title', required_msg)
+
+		if not self.cleaned_data.get('notification_message'):
+			self.add_error('notification_message', required_msg)
+
+		if not self.cleaned_data.get('notification_trigger_time'):
+			self.add_error('notification_trigger_time', required_msg)
+
 	class Meta:
 		model = models.PushNotifications
 		fields = '__all__'

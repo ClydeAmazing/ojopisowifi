@@ -30,11 +30,6 @@ class Settings(models.Model):
     Show_User_Details = models.BooleanField(default=False, help_text='Shows client IP and MAC address on the main portal')
     Insert_Coin_Sound = models.BooleanField(default=True, help_text='Enable/disable sound during insert coin.')
 
-    def clean(self, *args, **kwargs):
-        if self.Coinslot_Pin or self.Light_Pin:
-            if self.Coinslot_Pin == self.Light_Pin:
-                raise ValidationError('Coinslot Pin should not be the same as Light Pin.')
-
     class Meta:
         verbose_name = 'Settings'
 
@@ -369,9 +364,8 @@ class Device(models.Model):
         return 'Hardware Settings'
 
 class PushNotifications(models.Model):
-    Enabled = models.BooleanField(default=False)
+    Enabled = models.BooleanField(default=False, verbose_name='Enable')
     app_id = models.CharField(verbose_name = "OneSignal App ID", max_length=255, null=True, blank=True)
-    api_key = models.CharField(verbose_name="OneSignal API Key", max_length=255, null=True, blank=True)
     notification_title = models.CharField(verbose_name="Notification Title", max_length=255, null=True, blank=True)
     notification_message = models.CharField(verbose_name="Notification Message", max_length=255, null=True, blank=True)
     notification_trigger_time = models.DurationField(verbose_name="Notification Trigger", default=timezone.timedelta(minutes=0), help_text="Notification will fire when time is equal to the specified trigger time. Format: hh:mm:ss", null=True, blank=True)

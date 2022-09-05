@@ -69,8 +69,8 @@
 
                                     <!-- Extend/Pause Buttons -->
 
-                                    <div class="row justify-content-sm-center p-2">
-                                        <div class="col-6 d-flex align-items-stretch">
+                                    <div class="row justify-content-center p-2">
+                                        <div class="{% if pause_resume_flg or status == 'Paused' and time_left > 0 %} col {% else %} col-8 {% endif %} d-flex align-items-stretch justify-content-center">
                                             <button type="submit" name="extend" class="mb-2 btn btn-block btn-rounded text-success btn-neu">
                                                 {% if total_coins > 0 %}
                                                     <span class="badge badge-pill badge-warning"><strong>₱{{ total_coins }}</strong></span>
@@ -80,8 +80,8 @@
                                                  Extend
                                             </button>
                                         </div>
-                                        {% if pause_resume_flg %}
-                                            <div class="col-6 d-flex align-items-stretch">
+                                        {% if pause_resume_flg or status == 'Paused' and time_left > 0 %}
+                                            <div class="col d-flex align-items-stretch justify-content-center">
                                                 <button type="submit" name="pause_resume" value="{% if status == 'Paused' %}resume{% elif status == 'Connected' %}pause{% endif %}" class="mb-2 btn btn-block btn-rounded {% if status == 'Paused' %}text-info{% elif status == 'Connected' %}text-danger{% endif %} btn-neu">
                                                     <span class="fas {% if status == 'Paused' %}fa-play{% elif status == 'Connected' %}fa-pause{% endif %}"></span>
                                                     {% if status == 'Paused' %} Resume{% elif status == 'Connected' %} Pause{% endif %}
@@ -209,7 +209,7 @@
                         <button type="button" class="close" data-dismiss="modal">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <table class="table table-condensed">
+                        <table class="table table-condensed table-borderless table-striped">
                             <thead>
                                 <tr><th>Coin</th><th>Time Value</th></tr>
                             </thead>

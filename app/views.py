@@ -195,15 +195,14 @@ class Portal(View):
             action = request.POST['pause_resume']
             try:
                 client = models.Clients.objects.get(MAC_Address=mac)
-                pause_resume_flg = settings['pause_resume_flg']
-
-                if not pause_resume_flg:
-                    resp = api_response(700)
-                    messages.error(request, resp['description'])
-
-                    return redirect('app:portal')
+                can_pause = settings['pause_resume_flg']
                 
                 if action == 'pause':
+                    if not can_pause:
+                        resp = api_response(700)
+                        messages.error(request, resp['description'])
+
+                        return redirect('app:portal')
                     pause_resume_enable_time = settings['pause_resume_enable_time']
                     client_time = timedelta.total_seconds(client.running_time)
 
