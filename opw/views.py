@@ -13,7 +13,10 @@ class Main(View):
             return redirect('app:portal')
 
         if referrer_mac:
-            client = Clients.objects.get(MAC_Address=referrer_mac)
-            request.session['fas'] = client.FAS_Session
+            try:
+                client = Clients.objects.get(MAC_Address=referrer_mac)
+                request.session['fas'] = client.FAS_Session
+            except Clients.DoesNotExist:
+                pass
 
         return redirect('app:portal')
