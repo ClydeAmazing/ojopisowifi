@@ -10,6 +10,7 @@ class Main(View):
 
         if fas:
             request.session['fas'] = fas
+            return redirect('app:portal')
 
         if referrer_mac:
             client = Clients.objects.get(MAC_Address=referrer_mac)
