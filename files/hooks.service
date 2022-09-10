@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=sudoadmin
-Group=sudo
+User=root
+Group=root
 WorkingDirectory=/home/sudoadmin/src/ojopisowifi
 ExecStart=/home/sudoadmin/src/venv/bin/python /home/sudoadmin/src/ojopisowifi/hooks.py
 Restart=always
