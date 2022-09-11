@@ -35,8 +35,6 @@ def is_ajax(request):
     return request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest'
 
 def getClientInfo(mac):
-    info = dict()
-
     if models.Whitelist.objects.filter(MAC_Address=mac).exists():
         client_info = {
             'mac': mac,
@@ -80,10 +78,10 @@ def getClientInfo(mac):
 
         try:
             slot = client.coin_slot.latest()
-            info['insert_coin'] = True if not slot.is_available and slot.Client == client else False
+            insert_coin_flg = True if not slot.is_available and slot.Client == client else False
             slot_remaining_time = slot.available_in_seconds
         except models.CoinSlot.DoesNotExist:
-            info['insert_coin'] = False
+            insert_coin_flg = False
             slot_remaining_time = 0
 
         client_info = {    
@@ -96,7 +94,8 @@ def getClientInfo(mac):
             'total_coins': total_coins,
             'vouchers': vouchers,
             'appNotification_ID': notif_id,
-            'slot_remaining_time': slot_remaining_time
+            'slot_remaining_time': slot_remaining_time,
+            'insert_coin': insert_coin_flg
         }
     return client_info
 
@@ -144,7 +143,6 @@ class Portal(View):
             
         info = getClientInfo(mac)
         context = {**settings, **info}
-
         return render(request, self.template_name, context=context)
 
     def post(self, request):
