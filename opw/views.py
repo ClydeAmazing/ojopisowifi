@@ -31,7 +31,7 @@ class Main(View):
                 'Settings': Settings.objects.get(pk=1)
             }
 
-            client, created = Clients.objects.get_or_create(MAC_Address=fas_payload['mac'], defaults=default_values)
+            client, created = Clients.objects.get_or_create(MAC_Address=fas_payload['clientmac'], defaults=default_values)
 
             if not created:
                 updated = False
