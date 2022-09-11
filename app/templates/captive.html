@@ -184,7 +184,11 @@
                         {% if user_details and not insert_coin %}
                             <div class="row p-2">
                                 <div class="col text-center text-muted">
-                                    <small>{{ ip }} | {{ mac }}</small>
+                                    {% if whitelisted %}
+                                        <small>{{ mac }}</small>
+                                    {% else %}
+                                        <small>{{ ip }} | {{ mac }}</small>
+                                    {% endif %}
                                 </div>
                             </div>
                         {% endif %}

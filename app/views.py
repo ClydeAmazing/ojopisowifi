@@ -34,38 +34,25 @@ class Thread(BaseThread):
 def is_ajax(request):
     return request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest'
 
-def getClientInfo(ip, mac, fas):
+def getClientInfo(mac):
     info = dict()
-    whitelisted_flg = False
 
     if models.Whitelist.objects.filter(MAC_Address=mac).exists():
-        whitelisted_flg = True
-        status = 'Connected'
-        time_left = timedelta(0)
-        total_coins = 0
-        notif_id = ''
-        vouchers = None
-        slot_remaining_time = 0
-
-    else:
-        default_values = {
-            'IP_Address': ip,
-            'FAS_Session': fas,
-            'Settings': models.Settings.objects.get(pk=1)
+        client_info = {
+            'mac': mac,
+            'ip': None,
+            'whitelisted': True,
+            'status': 'Connected',
+            'time_left': timedelta(0),
+            'total_time': 0,
+            'total_coins': 0,
+            'vouchers': None,
+            'appNotification_ID': '',
+            'slot_remaining_time': 0
         }
 
-        client, created = models.Clients.objects.get_or_create(MAC_Address=mac, defaults=default_values)
-
-        if not created:
-            updated = False
-            if client.IP_Address != ip:
-                client.IP_Address = ip
-                updated = True
-            if client.FAS_Session != fas:
-                client.FAS_Session = fas
-                updated = True
-            if updated:
-                client.save()
+    else:
+        client = models.Clients.objects.get(MAC_Address=mac)
 
         try:
             total_coins = client.coin_queue.Total_Coins
@@ -99,17 +86,19 @@ def getClientInfo(ip, mac, fas):
             info['insert_coin'] = False
             slot_remaining_time = 0
 
-    info['ip'] = ip
-    info['mac'] = mac
-    info['whitelisted'] = whitelisted_flg
-    info['status'] = status
-    info['time_left'] = timedelta.total_seconds(time_left)
-    info['total_time'] = client.total_time if not whitelisted_flg else 0
-    info['total_coins'] = total_coins
-    info['vouchers'] = vouchers
-    info['appNotification_ID'] = notif_id
-    info['slot_remaining_time'] = slot_remaining_time
-    return info
+        client_info = {    
+            'mac': mac,
+            'ip': client.IP_Address,
+            'whitelisted': False,
+            'status': status,
+            'time_left': timedelta.total_seconds(time_left),
+            'total_time': client.total_time,
+            'total_coins': total_coins,
+            'vouchers': vouchers,
+            'appNotification_ID': notif_id,
+            'slot_remaining_time': slot_remaining_time
+        }
+    return client_info
 
 def getSettings():
     info = dict()
@@ -142,54 +131,29 @@ def getSettings():
 
     return info
 
-def generatePayload(fas):
-    decrypted =b64decode(fas.encode('utf-8')).decode('utf-8')
-    fas_data = decrypted.split(', ')
-    payload = dict()
-    for data in fas_data:
-        if '=' in data:
-            parsed_data = data.split('=')
-            payload[parsed_data[0]] = None if parsed_data[1] == '(null)' else parsed_data[1]
-
-    return payload if all([a in payload for a in ['clientip', 'clientmac']]) else False
-
 class Portal(View):
     template_name = 'captive.html'
 
     def get(self, request):
         settings = getSettings()
 
-        fas = request.session.get('fas', None)
+        mac = request.session.get('mac', None)
 
-        if not fas:
+        if not mac:
             return redirect(settings['opennds_gateway'])
-        
-        payload = generatePayload(fas)
-
-        if not payload:
-            return redirect(settings['opennds_gateway'])
-        
-        ip = payload['clientip']
-        mac = payload['clientmac']
             
-        info = getClientInfo(ip, mac, fas)
+        info = getClientInfo(mac)
         context = {**settings, **info}
 
         return render(request, self.template_name, context=context)
 
     def post(self, request):
-        fas_session = request.session.get('fas', None)
+        mac = request.session.get('mac', None)
 
         settings = getSettings()
 
-        if not fas_session:
+        if not mac:
             return redirect(settings['opennds_gateway'])
-
-        payload = generatePayload(fas_session)
-        if not payload:
-            return redirect(settings['opennds_gateway'])
-
-        mac = payload['clientmac']
             
         if 'pause_resume' in request.POST:
             action = request.POST['pause_resume']
@@ -331,17 +295,17 @@ class Portal(View):
 
 class Redeem(View):
     def post(self, request):
-        fas = request.session.get('fas', None)
+        mac = request.session.get('mac', None)
         voucher_code = request.POST.get('voucher_code', None)
         
         settings = getSettings()
 
-        if fas and voucher_code:
+        if mac and voucher_code:
             try:
                 voucher = models.Vouchers.objects.get(Voucher_code=voucher_code.upper(), Voucher_status = 'Not Used')
                 
                 try:
-                    client = models.Clients.objects.get(FAS_Session=fas)
+                    client = models.Clients.objects.get(MAC_Address=mac)
                     voucher.redeem(client)
 
                     messages.success(request, f'Voucher code {voucher.Voucher_code} successfully redeemed!')
@@ -364,10 +328,10 @@ class Commit(View):
             raise Http404("Page not found")
         else:
             data = dict()
-            fas = request.session.get('fas')
+            mac = request.session.get('mac')
 
             try:
-                client = models.Clients.objects.get(FAS_Session=fas)
+                client = models.Clients.objects.get(MAC_Address=mac)
                 try:
                     slot = client.coin_slot.latest()
 
