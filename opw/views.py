@@ -31,18 +31,7 @@ class Main(View):
                 'Settings': Settings.objects.get(pk=1)
             }
 
-            client, created = Clients.objects.get_or_create(MAC_Address=fas_payload['clientmac'], defaults=default_values)
-
-            if not created:
-                updated = False
-                if client.IP_Address != fas_payload['clientip']:
-                    client.IP_Address = fas_payload['clientip']
-                    updated = True
-                if client.FAS_Session != fas:
-                    client.FAS_Session = fas
-                    updated = True
-                if updated:
-                    client.save()
+            Clients.objects.update_or_create(MAC_Address=fas_payload['clientmac'], defaults=default_values)
 
             request.session['mac'] = fas_payload['clientmac']
             return redirect('app:portal')

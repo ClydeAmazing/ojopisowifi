@@ -50,53 +50,56 @@ def getClientInfo(mac):
         }
 
     else:
-        client = models.Clients.objects.get(MAC_Address=mac)
-
         try:
-            total_coins = client.coin_queue.Total_Coins
+            client = models.Clients.objects.get(MAC_Address=mac)
 
-        except models.CoinQueue.DoesNotExist:
-            total_coins = 0
+            try:
+                total_coins = client.coin_queue.Total_Coins
+            except models.CoinQueue.DoesNotExist:
+                total_coins = 0
 
-        try:
-            vouchers = client.voucher_code.filter(Voucher_status='Not Used')
-        except models.Vouchers.DoesNotExist:
-            vouchers = None
+            try:
+                vouchers = client.voucher_code.filter(Voucher_status='Not Used')
+            except models.Vouchers.DoesNotExist:
+                vouchers = None
 
-        status = client.Connection_Status
+            status = client.Connection_Status
 
-        if status == 'Connected':
-            time_left = client.running_time
+            if status == 'Connected':
+                time_left = client.running_time
 
-        elif status == 'Disconnected':
-            time_left = timedelta(0)
+            elif status == 'Disconnected':
+                time_left = timedelta(0)
 
-        elif status == 'Paused':
-            time_left = client.Time_Left
+            elif status == 'Paused':
+                time_left = client.Time_Left
 
-        notif_id = client.Notification_ID
+            notif_id = client.Notification_ID
 
-        try:
-            slot = client.coin_slot.latest()
-            insert_coin_flg = True if not slot.is_available and slot.Client == client else False
-            slot_remaining_time = slot.available_in_seconds
-        except models.CoinSlot.DoesNotExist:
-            insert_coin_flg = False
-            slot_remaining_time = 0
+            try:
+                slot = client.coin_slot.latest()
+                insert_coin_flg = True if not slot.is_available and slot.Client == client else False
+                slot_remaining_time = slot.available_in_seconds
+            except models.CoinSlot.DoesNotExist:
+                insert_coin_flg = False
+                slot_remaining_time = 0
 
-        client_info = {    
-            'mac': mac,
-            'ip': client.IP_Address,
-            'whitelisted': False,
-            'status': status,
-            'time_left': timedelta.total_seconds(time_left),
-            'total_time': client.total_time,
-            'total_coins': total_coins,
-            'vouchers': vouchers,
-            'appNotification_ID': notif_id,
-            'slot_remaining_time': slot_remaining_time,
-            'insert_coin': insert_coin_flg
-        }
+            client_info = {    
+                'mac': mac,
+                'ip': client.IP_Address,
+                'whitelisted': False,
+                'status': status,
+                'time_left': timedelta.total_seconds(time_left),
+                'total_time': client.total_time,
+                'total_coins': total_coins,
+                'vouchers': vouchers,
+                'appNotification_ID': notif_id,
+                'slot_remaining_time': slot_remaining_time,
+                'insert_coin': insert_coin_flg
+            }
+        except models.Clients.DoesNotExist:
+            client_info = {}
+
     return client_info
 
 def getSettings():
@@ -141,8 +144,12 @@ class Portal(View):
         if not mac:
             return redirect(settings['opennds_gateway'])
             
-        info = getClientInfo(mac)
-        context = {**settings, **info}
+        client_info = getClientInfo(mac)
+
+        if not client_info:
+            return redirect(settings['opennds_gateway'])
+
+        context = {**settings, **client_info}
         return render(request, self.template_name, context=context)
 
     def post(self, request):
