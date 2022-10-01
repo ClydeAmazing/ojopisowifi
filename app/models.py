@@ -1,11 +1,15 @@
-from django.core.exceptions import ValidationError
 from django.db import models
 from datetime import timedelta
 from django.utils import timezone
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.utils import duration
-from app.utils import run_command
-import string, random, os, math, uuid
+import string, random, os, math, uuid, subprocess
+
+def run_command(command):
+    try:
+        res = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return res
+    except FileNotFoundError:
+        return None
 
 class Settings(models.Model):
     rate_type_choices = (
