@@ -152,8 +152,8 @@ class Singleton(admin.ModelAdmin):
 
 class ClientsAdmin(NoLog, admin.ModelAdmin):
     form = forms.ClientsForm
-    list_display = ('IP_Address', 'MAC_Address', 'Device_Name', 'Connection_Status', 'Time_Left', 'running_time')
-    readonly_fields = ('IP_Address', 'MAC_Address', 'Connected_On', 'Expire_On', 'Notification_ID', 'Notified_Flag', 'Date_Created', 'id', 'FAS_Session')
+    list_display = ('MAC_Address', 'IP_Address', 'Device_Name', 'Connection_Status', 'Time_Left', 'running_time')
+    readonly_fields = ('MAC_Address', 'IP_Address', 'Connected_On', 'Expire_On', 'Notification_ID', 'Notified_Flag', 'Date_Created', 'id', 'FAS_Session')
     actions = ['Connect', 'Disconnect', 'Pause', 'Whitelist']
     exclude = ('Settings', 'FAS_Session')
 

@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.utils import duration
+from app.utils import run_command
 import string, random, os, math, uuid
 
 class Settings(models.Model):
@@ -102,6 +103,8 @@ class Clients(models.Model):
                 self.Notified_Flag = False
 
             self.save()
+
+            run_command(['sudo', 'ndsctl', 'auth', self.MAC_Address, '0', str(self.Upload_Rate), str(self.Download_Rate), '0', '0'])
 
             success_flag = True
         return success_flag

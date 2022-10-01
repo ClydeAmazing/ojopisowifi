@@ -41,7 +41,7 @@ def getClientInfo(mac):
             'ip': None,
             'whitelisted': True,
             'status': 'Connected',
-            'time_left': timedelta(0),
+            'time_left': 0,
             'total_time': 0,
             'total_coins': 0,
             'vouchers': None,
