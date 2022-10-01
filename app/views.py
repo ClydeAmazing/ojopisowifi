@@ -7,12 +7,10 @@ from django.db.models import F
 from datetime import timedelta
 from app import models
 from app.opw import api_response
-from app.tasks import toggle_slot, insert_coin
+from app.tasks import insert_coin
 from app.utils import get_active_clients
-from base64 import b64decode
 from threading import Thread as BaseThread
 from django.db import close_old_connections
-
 
 class Thread(BaseThread):
     def start(self):

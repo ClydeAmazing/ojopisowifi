@@ -4,13 +4,6 @@ from django.utils import timezone
 from django.core.validators import MaxValueValidator, MinValueValidator
 import string, random, os, math, uuid, subprocess
 
-def run_command(command):
-    try:
-        res = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return res
-    except FileNotFoundError:
-        return None
-
 class Settings(models.Model):
     rate_type_choices = (
         ('auto', 'Minutes/Peso'),
@@ -107,8 +100,6 @@ class Clients(models.Model):
                 self.Notified_Flag = False
 
             self.save()
-
-            run_command(['sudo', 'ndsctl', 'auth', self.MAC_Address, '0', str(self.Upload_Rate), str(self.Download_Rate), '0', '0'])
 
             success_flag = True
         return success_flag

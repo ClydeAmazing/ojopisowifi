@@ -12,7 +12,7 @@ def run_command(command):
     except FileNotFoundError:
         return None
 
-def sweep(clients):
+def sweep(connected_clients):
     ndsctl_res = run_command(['sudo', 'ndsctl', 'json'])
 
     if not ndsctl_res or ndsctl_res.stderr:
@@ -31,8 +31,6 @@ def sweep(clients):
                 preauth_clients.append(c)
             elif client_status == 'Authenticated':
                 auth_clients.append(c)
-
-        connected_clients = clients['clients']
         
         for_auth_clients = set([*connected_clients]).difference(auth_clients)
         for_deauth_clients = set(auth_clients).difference([*connected_clients])
@@ -44,14 +42,14 @@ def sweep(clients):
                 auth_cmd = ['sudo', 'ndsctl', 'auth', c, '0', str(c['u']), str(['d']), '0', '0']
                 run_command(auth_cmd)
 
-            time.sleep(1)
+            time.sleep(0.5)
 
         # Deauthentication
         for c in for_deauth_clients:
             deauth_cmd = ['sudo', 'ndsctl', 'deauth', c]
             run_command(deauth_cmd)
 
-            time.sleep(1)
+            time.sleep(0.5)
 
     except (SyntaxError, ValueError):
         return False
@@ -63,6 +61,7 @@ if __name__ == '__main__':
     while True:
         res = session.get(CLIENTS_ENDPOINT_URL, data={})
         if res.status_code == 200:
-            sweep(res.json())
+            response_data = res.json()
+            sweep(response_data['clients'])
 
-        time.sleep(15)
+        time.sleep(5)
