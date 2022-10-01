@@ -39,7 +39,7 @@ def sweep(connected_clients):
         for c in for_auth_clients:
             c_details = connected_clients.get(c)
             if c_details:
-                auth_cmd = ['sudo', 'ndsctl', 'auth', c, '0', str(c['u']), str(['d']), '0', '0']
+                auth_cmd = ['sudo', 'ndsctl', 'auth', c, '0', str(c_details['u']), str(c_details['d']), '0', '0']
                 run_command(auth_cmd)
 
             time.sleep(0.5)
