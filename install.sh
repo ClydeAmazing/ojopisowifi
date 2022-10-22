@@ -49,9 +49,6 @@ echo ''
 echo 'Deactivating Python Virtual Environment'
 deactivate
 echo ''
-echo 'Deactivating Python Virtual Environment'
-deactivate
-echo ''
 echo 'Backing up dnsmasq.conf'
 mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
 echo ''
