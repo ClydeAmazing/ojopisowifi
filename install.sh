@@ -48,3 +48,17 @@ python /home/sudoadmin/src/ojopisowifi/manage.py collectstatic
 echo ''
 echo 'Deactivating Python Virtual Environment'
 deactivate
+echo ''
+echo 'Deactivating Python Virtual Environment'
+deactivate
+echo ''
+echo 'Backing up dnsmasq.conf'
+mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
+echo ''
+echo 'Copying new dnsmasq config'
+cp /home/sudoadmin/src/ojopisowifi/files/dnsmasq.conf /etc/dnsmasq.conf
+echo ''
+echo 'Backing up network interface config'
+mv /etc/network/interfaces /etc/network/interfaces.orig
+echo 'Copying new network interface config'
+cp /home/sudoadmin/src/ojopisowifi/files/interfaces /etc/network/interfaces
