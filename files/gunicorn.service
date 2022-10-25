@@ -6,7 +6,7 @@ After=network.target
 User=sudoadmin
 Group=www-data
 WorkingDirectory=/home/sudoadmin/src/ojopisowifi
-ExecStart=/home/sudoadmin/src/venv/bin/gunicorn --access-logfile - --workers 3 --bind unix:/home/sudoadmin/src/ojopisowifi/opw.sock opw.wsgi:application
+ExecStart=/usr/bin/gunicorn --access-logfile - --workers 3 --bind unix:/home/sudoadmin/src/ojopisowifi/opw.sock opw.wsgi:application
 
 [Install]
 WantedBy=multi-user.target
