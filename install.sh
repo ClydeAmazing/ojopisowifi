@@ -32,7 +32,7 @@ echo 'Installing ojopisowifi app dependencies'
 pip install -r <(grep -v cryptography /home/sudoadmin/src/ojopisowifi/requirements.txt) --trusted-host pypi.org --trusted-host files.pythonhosted.org
 echo ''
 echo 'Installing cryptography package'
-pip install cryptography --extra-index-url=https://www.piwheels.org/simple
+pip install cryptography --index-url=https://www.piwheels.org/simple
 echo  ''
 echo 'Setting file permissions'
 chown sudoadmin:root /home/sudoadmin/src/ojopisowifi/ && chown sudoadmin:root /home/sudoadmin/src/ojopisowifi/db.sqlite3 && chmod +x /home/sudoadmin/src/ojopisowifi/hooks.py
