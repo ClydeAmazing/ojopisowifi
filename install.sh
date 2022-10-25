@@ -20,7 +20,7 @@ python3 -m venv /home/sudoadmin/src/venv
 echo ''
 echo 'Downloading source code from github'
 export GIT_SSL_NO_VERIFY=1
-git clone https://github.com/ClydeAmazing/ojopisowifi.git
+git clone https://github.com/ClydeAmazing/ojopisowifi.git /home/sudoadmin/src/ojopisowifi/
 echo ''
 echo 'Activating virtual environment'
 source /home/sudoadmin/src/venv/bin/activate
@@ -29,8 +29,11 @@ echo 'Upgrading python pip, setuptools and wheel'
 pip install --upgrade pip setuptools wheel --trusted-host pypi.org --trusted-host files.pythonhosted.org
 echo ''
 echo 'Installing ojopisowifi app dependencies'
-pip install -r ojopisowifi/requirements.txt --trusted-host pypi.org --trusted-host files.pythonhosted.org
+pip install -r <(grep -v cryptography /home/sudoadmin/src/ojopisowifi/requirements.txt) --trusted-host pypi.org --trusted-host files.pythonhosted.org
 echo ''
+echo 'Installing cryptography package'
+pip install cryptography --extra-index-url=https://www.piwheels.org/simple
+echo  ''
 echo 'Setting file permissions'
 chown sudoadmin:root /home/sudoadmin/src/ojopisowifi/ && chown sudoadmin:root /home/sudoadmin/src/ojopisowifi/db.sqlite3 && chmod +x /home/sudoadmin/src/ojopisowifi/hooks.py
 echo ''
