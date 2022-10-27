@@ -35,7 +35,10 @@ echo 'Installing cryptography package'
 pip install cryptography --index-url=https://www.piwheels.org/simple
 echo  ''
 echo 'Setting file permissions'
-chown sudoadmin:root /home/sudoadmin/src/ojopisowifi/ && chown sudoadmin:root /home/sudoadmin/src/ojopisowifi/db.sqlite3 && chmod +x /home/sudoadmin/src/ojopisowifi/hooks.py
+chown sudoadmin:root /home/sudoadmin/src/ojopisowifi/ 
+chown sudoadmin:root /home/sudoadmin/src/ojopisowifi/db.sqlite3 
+chmod +x /home/sudoadmin/src/ojopisowifi/hooks.py
+chmod +x /home/sudoadmin/src/ojopisowifi/sweep.py
 echo ''
 echo 'Removing default nginx profile'
 rm /etc/nginx/sites-enabled/default
@@ -66,7 +69,7 @@ systemctl start opw_init.service
 systemctl start sweep.service
 echo ''
 echo 'Performing collecstatic command'
-python /home/sudoadmin/src/ojopisowifi/manage.py collectstatic
+python /home/sudoadmin/src/ojopisowifi/manage.py collectstatic --no-input > /dev/null
 echo ''
 echo 'Deactivating Python Virtual Environment'
 deactivate
