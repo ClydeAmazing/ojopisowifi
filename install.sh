@@ -10,7 +10,7 @@ echo 'Updating and upgrading system'
 apt-get update && apt-get dist-upgrade -y
 echo ''
 echo 'Installing dependencies'
-apt-get install build-essential libssl-dev libffi-dev python3-dev python3-venv python3-pip redis-server nginx dnsmasq gunicorn git systemd -y
+apt-get install build-essential libssl-dev libffi-dev python3-dev python3-venv python3-pip nginx dnsmasq gunicorn git systemd -y
 echo ''
 echo 'Creating src directory'
 mkdir /home/sudoadmin/src
@@ -50,7 +50,7 @@ cp /home/sudoadmin/src/ojopisowifi/files/opw_init.service /etc/systemd/system/op
 cp /home/sudoadmin/src/ojopisowifi/files/sweep.service /etc/systemd/system/sweep.service
 cp /home/sudoadmin/src/ojopisowifi/files/opw.conf /etc/nginx/conf.d/
 echo ''
-echo 'Reloadin daemon files'
+echo 'Reloading daemon files'
 systemctl daemon-reload
 echo ''
 echo 'Enabling gunicorn service'
