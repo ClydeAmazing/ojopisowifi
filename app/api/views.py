@@ -15,6 +15,7 @@ def get_NDS_status():
 		return False
 	
 	return ast.literal_eval(ndsctl_res.stdout.decode('utf-8'))
+	
 class DashboardDetails(APIView):
 	def post(self, request, format=None):
 		action = request.data.get("action", None)

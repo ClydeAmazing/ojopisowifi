@@ -146,3 +146,16 @@ STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+MQTT_CONFIG = {
+    # 'hostname': 'public.mqtthq.com',
+    # 'port': 8083,
+    'hostname': '127.0.0.1',
+    'port': 1883,
+    'client_id': '=)d-i9u3349btm+3%7!szma=6r__oawc!el@^$k#g9ob3y-7wt',
+    'qos': 0
+}
+
+MQTT_TOPICS = {
+    'important_topic': 'topic/important'
+}

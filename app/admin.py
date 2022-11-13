@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth, TruncDate
 from django.urls import path
+from datetime import timedelta
 from app import models, forms
 from app.opw import cc, grc, get_nds_status, speedtest, shutdown_system, restart_system
 
@@ -128,7 +129,7 @@ class NoLog(admin.ModelAdmin):
     def log_change(self, *args):
         pass
 
-    def log_deletion(sefl, *args):
+    def log_deletion(self, *args):
         pass
 
 class Singleton(admin.ModelAdmin):

@@ -1,29 +1,47 @@
-from django.contrib import messages
-from django.http import JsonResponse, Http404
-from django.shortcuts import render, redirect
-from django.views import View
-from django.utils import timezone
-from django.db.models import F
 from datetime import timedelta
+from threading import Thread as BaseThread
+from paho.mqtt import publish as mqtt_publish
+
+from django.conf import settings
+from django.contrib import messages
+from django.db import close_old_connections
+from django.db.models import F
+from django.http import Http404, JsonResponse
+from django.shortcuts import redirect, render
+from django.utils import timezone
+from django.views import View
+
 from app import models
 from app.opw import api_response
 from app.tasks import insert_coin
 from app.utils import get_active_clients
-from threading import Thread as BaseThread
-from django.db import close_old_connections
 
-class Thread(BaseThread):
+class InsertCoinThread(BaseThread):
+    available = False
+    mqtt_topic = settings.MQTT_TOPICS['important_topic']
+    mqtt_config = settings.MQTT_CONFIG
+
     def start(self):
         close_old_connections()
         super().start()
 
-    def __init__(self, client_id, slot_light_pin):
-        self.client_id = client_id
-        self.slot_light_pin = slot_light_pin
+    def __init__(self, coinslot_id):
+        self.coinslot_id = coinslot_id
         BaseThread.__init__(self)
 
+    def publish(self, message):
+        coinslot_topic = f'{self.mqtt_topic}/{self.coinslot_id}'
+        mqtt_publish.single(topic=coinslot_topic, payload=message, **self.mqtt_config)
+
     def run(self):
-        insert_coin(self.client_id, self.slot_light_pin)
+        self.publish('ON')
+        while not self.available:
+            try:
+                coinslot = models.CoinSlot.objects.get(Slot_ID=self.coinslot_id)
+                self.available = coinslot.is_available
+            except models.CoinSlot.DoesNotExist:
+                self.available = False
+        self.publish('OFF')
 
     def _bootstrap_inner(self):
         super()._bootstrap_inner()
@@ -230,8 +248,8 @@ class Portal(View):
                 if not created:
                     coin_queue.save()
 
-                thread = Thread(client.id, settings['slot_light_pin'])
-                thread.start()
+                insert_coin_thread = InsertCoinThread(coinslot.Slot_ID)
+                insert_coin_thread.start()
 
                 messages.success(request, 'Please insert your coin(s).')
             

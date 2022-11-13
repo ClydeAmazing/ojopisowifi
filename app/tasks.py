@@ -1,5 +1,7 @@
 from app import models
 from app.utils import run_command
+from paho.mqtt import publish as mqtt_publish
+from django.conf import settings
 import requests, json, time
 
 def send_push_notif():
@@ -27,12 +29,17 @@ def send_push_notif():
         pass
 
 def toggle_slot(action, light_pin):
-    if action == 'ON':
-        command = ['gpio', '-1', 'write', str(light_pin), str(1)]
-    else :
-        command = ['gpio', '-1', 'write', str(light_pin), str(0)]
+    mqtt_settings = settings.MQTT_CONFIG
+    topic = settings.MQTT_TOPICS['important_topic']
 
-    run_command(command)
+    if action == 'ON':
+        # command = ['gpio', '-1', 'write', str(light_pin), str(1)]
+        mqtt_publish.single(topic=topic, payload='Coinslot ON', **mqtt_settings)
+    else :
+        mqtt_publish.single(topic=topic, payload='Coinslot OFF', **mqtt_settings)
+        # command = ['gpio', '-1', 'write', str(light_pin), str(0)]
+
+    # run_command(command)
 
 def insert_coin(client_id, slot_light_pin):
     slot_available = False

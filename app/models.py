@@ -53,29 +53,24 @@ class Clients(models.Model):
     def running_time(self):
         if not self.Expire_On:
             return timedelta(0)
-        else:
-            running_time = self.Expire_On - timezone.now()
-            if running_time < timedelta(0):
-                return timedelta(0)
-            else:
-                return running_time
+        running_time = self.Expire_On - timezone.now()
+        if running_time < timedelta(0):
+            return timedelta(0)
+        return running_time
 
     @property
     def total_time(self):
         if self.Expire_On and self.Connected_On:
             return timedelta.total_seconds(self.Expire_On - self.Connected_On)
-        else:
-            return 0
+        return 0
 
     @property
     def Connection_Status(self):
         if self.running_time > timedelta(0):
             return 'Connected'
-        else:
-            if self.Time_Left > timedelta(0):
-                return 'Paused'
-            else:
-                return 'Disconnected'
+        if self.Time_Left > timedelta(0):
+            return 'Paused'
+        return 'Disconnected'
 
     def credit_amount(self, amount):
         self.coin_queue.Total_Coins += amount
