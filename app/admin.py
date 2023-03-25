@@ -3,13 +3,15 @@ from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth, TruncDate
+from django.contrib.auth.models import User
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.urls import path
+from django.utils.translation import gettext_lazy as _
 from datetime import timedelta
 from app import models, forms
 from app.opw import cc, grc, get_nds_status, speedtest, shutdown_system, restart_system
 
 from django.contrib.auth.models import User, Group
-
 
 def client_check(request):
     if request.user.is_superuser:
@@ -381,6 +383,22 @@ class PushNotificationsAdmin(NoLog, Singleton, admin.ModelAdmin):
         messages.add_message(request, messages.INFO, 'Push Notification Settings updated successfully.')
         super(PushNotificationsAdmin, self).save_model(request, obj, form, change)
 
+class UserAdmin(NoLog, BaseUserAdmin):
+    fieldsets = (
+        (None, {"fields": ("username", "password")}),
+        (_("Personal info"), {"fields": ("first_name", "last_name", "email")}),
+        (
+            _("Permissions"),
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "groups",
+                ),
+            },
+        ),
+    )
+
 ojo_admin.register(models.Clients, ClientsAdmin)
 ojo_admin.register(models.Whitelist, WhitelistAdmin)
 ojo_admin.register(models.CoinSlot, CoinSlotAdmin)
@@ -392,7 +410,7 @@ ojo_admin.register(models.Rates, RatesAdmin)
 ojo_admin.register(models.Device, DeviceAdmin)
 ojo_admin.register(models.Vouchers, VouchersAdmin)
 ojo_admin.register(models.PushNotifications, PushNotificationsAdmin)
-ojo_admin.register(User, NoLog)
+ojo_admin.register(User, UserAdmin)
 ojo_admin.register(Group, NoLog)
 
 ojo_admin.index_template = 'admin/ojo_index.html'

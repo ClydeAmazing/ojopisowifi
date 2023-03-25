@@ -161,8 +161,8 @@ header() {
 header_redirect() {
 # Define a common header html for every page served
 	if [ "$mac" = "Unavailable" ]; then
-		payload=""
-		redir_msg="Unable to fetch client info. Please disconnect and reconnect to wifi."
+		payload="<meta http-equiv=\"Refresh\" content=\"3; url='http://10.0.0.1'\" />"
+		redir_msg="Unable to fetch client info. Retrying..."
 	else
 		payload="<meta http-equiv=\"Refresh\" content=\"1; url='http://10.0.0.1:8000/?referrer=$mac'\" />"
 		redir_msg="Redirecting to portal..."
@@ -210,22 +210,22 @@ body() {
 			</form>
 		"
 		footer
-	elif [ "$status" = "status" ]; then
+	elif [ "$status" = "status" ] || [ "$status" = "err511" ]; then
 		header_redirect
 		footer
-	elif [ "$status" = "err511" ]; then
-		header
-		echo "
-			<p>Authentication Required</p>
-			<form action=\"$url/login\" method=\"get\" target=\"_blank\">
-			<input type=\"submit\" value=\"Portal Login\" >
-			</form>
-			<br>
-			<form action=\"$url\" method=\"get\">
-			<input type=\"submit\" value=\"Refresh\">
-			</form>
-		"
-		footer
+	#elif [ "$status" = "err511" ]; then
+	#	header
+	#	echo "
+	#		<p>Authentication Required</p>
+	#		<form action=\"$url/login\" method=\"get\" target=\"_blank\">
+	#		<input type=\"submit\" value=\"Portal Login\" >
+	#		</form>
+	#		<br>
+	#		<form action=\"$url\" method=\"get\">
+	#		<input type=\"submit\" value=\"Refresh\">
+	#		</form>
+	#	"
+	#	footer
 	else
 		exit 1
 	fi
@@ -239,12 +239,14 @@ fi
 if [ "$status" = "status" ] || [ "$status" = "err511" ]; then
 	parse_parameters
 
-	if [ -z "$gatewayfqdn" ] || [ "$gatewayfqdn" = "disable" ] || [ "$gatewayfqdn" = "disabled" ]; then
-		url="http://$gatewayaddress"
-	else
-		url="http://$gatewayfqdn"
-	fi
+	#if [ -z "$gatewayfqdn" ] || [ "$gatewayfqdn" = "disable" ] || [ "$gatewayfqdn" = "disabled" ]; then
+	#	url="http://$gatewayaddress"
+	#else
+	#	url="http://$gatewayfqdn"
+	#fi
 
+	url="http://$gatewayaddress"
+	
 	querystr=""
 
 	if [ ! -z "$b64query" ]; then

@@ -125,3 +125,6 @@ class DashboardDetails(APIView):
 		except ObjectDoesNotExist:
 			info['message'] = serial_error
 			return Response(info, status=status.HTTP_200_OK)
+
+class Coinslot(APIView):
+	pass

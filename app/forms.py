@@ -89,7 +89,7 @@ class CoinSlotForm(forms.ModelForm):
 
 	class Meta:
 		model = models.CoinSlot
-		fields = '__all__'
+		fields = ('Type', 'Slot_ID', 'Slot_Desc', 'Credentials')
 
 class PushNotifForm(forms.ModelForm):
 

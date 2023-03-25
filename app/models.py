@@ -2,6 +2,7 @@ from django.db import models
 from datetime import timedelta
 from django.utils import timezone
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.contrib.auth.models import User
 import string, random, os, math, uuid, subprocess
 
 class Settings(models.Model):
@@ -48,6 +49,7 @@ class Clients(models.Model):
     Date_Created = models.DateTimeField(auto_now_add=True)
     FAS_Session = models.CharField(max_length=500, unique=True)
     Settings = models.ForeignKey(Settings, on_delete=models.CASCADE)
+    # Updated = models.DateTimeField(auto_now=True)
 
     @property
     def running_time(self):
@@ -124,7 +126,7 @@ class Clients(models.Model):
         verbose_name_plural = 'Clients'
 
     def __str__(self):
-        return str(self.IP_Address) + ' | ' + str(self.MAC_Address)
+        return self.Device_Name if self.Device_Name else self.MAC_Address
 
 class Whitelist(models.Model):
     MAC_Address = models.CharField(max_length=255, verbose_name='MAC', unique=True)
@@ -161,9 +163,9 @@ class CoinSlot(models.Model):
 
     Client = models.ForeignKey(Clients, on_delete=models.SET_NULL, null=True, blank=True, related_name='coin_slot')
     Setting = models.ForeignKey(Settings, on_delete=models.CASCADE)
+    Credentials = models.OneToOneField(User, on_delete=models.CASCADE, help_text='Specify user account for coinslot authentication. <br /><b style="color: red;">Important: Only choose a non staff accounts to prevent admin access in case coinslot credentials is leaked.</b>')
     Type = models.IntegerField(default=1, choices=TYPE_CHOICES)
     Slot_ID = models.UUIDField(unique=True, default=uuid.uuid4)
-    Slot_Address = models.CharField(unique=True, max_length=17, default='00:00:00:00:00:00')
     Slot_Desc = models.CharField(max_length=50, null=True, blank=True, verbose_name='Description')
     Last_Updated = models.DateTimeField(null=True, blank=True, auto_now_add=True)
 
@@ -202,7 +204,7 @@ class CoinSlot(models.Model):
         get_latest_by = 'Last_Updated'
 
     def __str__(self):
-        return 'Slot no: ' + str(self.pk)
+        return str(self.Slot_ID)
 
 class Rates(models.Model):
     Edit = "Edit"

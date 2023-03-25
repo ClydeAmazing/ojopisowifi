@@ -1,4 +1,6 @@
 from app.models import Clients, Whitelist, Device, Network
+from django.utils import timezone
+from datetime import timedelta
 import subprocess
 
 def run_command(command):
@@ -24,6 +26,12 @@ def get_active_clients():
         }
         for c in clients if c.Connection_Status == 'Connected'
     }
+
+    for c in clients:
+        if c.Connection_Status == 'Paused':
+            time_diff = c.Updated - timezone.now()
+            if time_diff > timedelta(weeks=2):
+                c.delete()
 
     whitelists = Whitelist.objects.all()
 
