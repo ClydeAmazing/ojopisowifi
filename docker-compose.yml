@@ -1,6 +1,11 @@
 version: '3.4'
 
 services:
+  redis:
+    image: redis:latest
+    networks:
+      - opw_network
+
   ojopisowifi:
     image: ojopisowifi
     build:
@@ -8,3 +13,25 @@ services:
       dockerfile: ./Dockerfile
     ports:
       - 8000:8000
+    volumes:
+      - ./db:/app/db
+    networks:
+      - opw_network
+    depends_on:
+      - redis
+
+  ojopisowifi-worker:
+    image: ojopisowifi-worker
+    build:
+      context: .
+      dockerfile: ./Dockerfile.worker
+    volumes:
+      - ./db:/app/db
+    networks:
+      - opw_network
+    depends_on:
+      - redis
+
+networks:
+  opw_network:
+    driver: bridge

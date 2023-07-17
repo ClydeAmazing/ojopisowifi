@@ -12,23 +12,6 @@ from app.utils import get_active_clients
 from threading import Thread as BaseThread
 from django.db import close_old_connections
 
-class Thread(BaseThread):
-    def start(self):
-        close_old_connections()
-        super().start()
-
-    def __init__(self, client_id, slot_light_pin):
-        self.client_id = client_id
-        self.slot_light_pin = slot_light_pin
-        BaseThread.__init__(self)
-
-    def run(self):
-        insert_coin(self.client_id, self.slot_light_pin)
-
-    def _bootstrap_inner(self):
-        super()._bootstrap_inner()
-        close_old_connections()
-
 def is_ajax(request):
     return request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest'
 
@@ -230,8 +213,7 @@ class Portal(View):
                 if not created:
                     coin_queue.save()
 
-                thread = Thread(client.id, settings['slot_light_pin'])
-                thread.start()
+                insert_coin.delay(client.id, settings['slot_light_pin'])
 
                 messages.success(request, 'Please insert your coin(s).')
             

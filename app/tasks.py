@@ -1,3 +1,4 @@
+from celery import shared_task
 from app import models
 from app.utils import run_command
 import requests, json, time
@@ -34,6 +35,7 @@ def toggle_slot(action, light_pin):
 
     run_command(command)
 
+@shared_task
 def insert_coin(client_id, slot_light_pin):
     slot_available = False
     print('Turn on light')
@@ -49,7 +51,7 @@ def insert_coin(client_id, slot_light_pin):
         except (models.Clients.DoesNotExist, models.CoinSlot.DoesNotExist):
             slot_available = True
 
-        time.sleep(1)
+        time.sleep(.5)
 
     print('Turn off light')
     toggle_slot('OFF', slot_light_pin)
