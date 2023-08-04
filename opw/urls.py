@@ -13,5 +13,6 @@ urlpatterns = [
     path('app/', include('app.urls')),
     path('app/admin/', ojo_admin.urls),
     path('app/api/', include('app.api.urls')),
+    # path('o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
     path('', Main.as_view(), name='index')
 ] 

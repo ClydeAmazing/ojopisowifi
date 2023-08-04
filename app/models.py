@@ -38,7 +38,7 @@ class Clients(models.Model):
     IP_Address = models.CharField(max_length=15, verbose_name='IP')
     MAC_Address = models.CharField(max_length=255, verbose_name='MAC Address', unique=True)
     Device_Name = models.CharField(max_length=255, verbose_name='Device Name', null=True, blank=True)
-    Time_Left = models.DurationField(default=timezone.timedelta(minutes=0))
+    Time_Left = models.DurationField(default=timezone.timedelta(minutes=0)) # Holds client time when paused
     Connected_On = models.DateTimeField(null=True, blank=True)
     Expire_On = models.DateTimeField(null=True, blank=True)
     Upload_Rate = models.IntegerField(help_text='Specify client internet upload bandwidth in Kbps. No value = unlimited bandwidth', default=0)
@@ -51,6 +51,10 @@ class Clients(models.Model):
 
     @property
     def running_time(self):
+        """
+        Calculates and returns the remaining time of the client if they are connected.
+        self.Expire_On is the datetime anticipation of the end of session for the client
+        """
         if not self.Expire_On:
             return timedelta(0)
         else:
@@ -62,6 +66,9 @@ class Clients(models.Model):
 
     @property
     def total_time(self):
+        """
+        Calculates the total time in seconds since the client is connected until its session end
+        """
         if self.Expire_On and self.Connected_On:
             return timedelta.total_seconds(self.Expire_On - self.Connected_On)
         else:
@@ -69,6 +76,9 @@ class Clients(models.Model):
 
     @property
     def Connection_Status(self):
+        """
+        Returns the status of the client session.
+        """
         if self.running_time > timedelta(0):
             return 'Connected'
         else:
@@ -82,6 +92,12 @@ class Clients(models.Model):
         self.coin_queue.save()
 
     def Connect(self, add_time = timedelta(0)):
+        """
+        Credits session time stored in self.Time_Left field (populated during Pause)
+        and any additional session time/credits(type of datetime.timedelta) passed to this function
+
+        This function can also be used to 'Resume' client session time.
+        """
         total_time = self.Time_Left + add_time
         success_flag = False
         if total_time > timedelta(0):
@@ -105,6 +121,9 @@ class Clients(models.Model):
         return success_flag
 
     def Disconnect(self):
+        """
+        Removes session time of the client
+        """
         success_flag = False
         if self.Connection_Status == 'Connected':
             self.Expire_On = None
@@ -116,6 +135,10 @@ class Clients(models.Model):
         return success_flag
 
     def Pause(self):
+        """
+        Removes client running time and put the remaining time on the self.Time_Left field 
+        for future use (or during Resume process)
+        """
         success_flag = False
         if self.Connection_Status == 'Connected':
             self.Time_Left = self.running_time

@@ -15,6 +15,7 @@ services:
       - 8000:8000
     volumes:
       - ./db:/app/db
+      - ./app:/app/app
     networks:
       - opw_network
     depends_on:
@@ -27,6 +28,7 @@ services:
       dockerfile: ./Dockerfile.worker
     volumes:
       - ./db:/app/db
+      - ./app:/app/app
     networks:
       - opw_network
     depends_on:

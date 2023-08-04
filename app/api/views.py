@@ -6,6 +6,9 @@ from django.db.models import Sum
 from django.db.models.functions import TruncMonth, TruncDate
 from app import models
 from app.opw import cc, grc
+from .serializers import AuthClientSerializer, ClientAuthSerializer
+
+from datetime import timedelta
 import subprocess, ast
 
 
@@ -124,3 +127,79 @@ class DashboardDetails(APIView):
 		except ObjectDoesNotExist:
 			info['message'] = serial_error
 			return Response(info, status=status.HTTP_200_OK)
+
+class CreateUser(APIView):
+
+	def handle_auth_client(self, request_data):
+		"""
+		Handles the auth_client BinAuth call from OpenNDS.
+		"""
+		print('Handled by auth_client')
+		serialized_data = AuthClientSerializer(data=request_data)
+		if not serialized_data.is_valid():
+			return Response(status=status.HTTP_400_BAD_REQUEST)
+		
+		print('data is valid')
+		validated_data = serialized_data.validated_data
+
+		client_mac = validated_data['client_mac']
+		client_ip = validated_data['client_ip']
+		client_user_agent = validated_data['user_agent']
+		client_token = validated_data['client_token']
+
+		defaults = {
+			'IP_Address': client_ip,
+			'FAS_Session': client_token,
+			'Settings_id': 1
+		}
+		print('preparing defaults')
+		client, created = models.Clients.objects.update_or_create(MAC_Address=client_mac, defaults=defaults)
+		if created:
+			# The client was just created. We will not "authenticate" yet
+			return Response(status=status.HTTP_201_CREATED)
+
+		print('Checking if client has time')
+		if client.running_time > timedelta(0):
+			# Send session length to opennds to authenticate the client
+			response_data = {
+				'session_length': client.running_time
+			}
+			return Response(response_data, status=status.HTTP_200_OK)
+		
+		print('Client does not have time')
+		# User has no running session time so we cannot allow opennds to authenticate the user
+		return Response(status=status.HTTP_401_UNAUTHORIZED)
+	
+	def handle_client_auth(self, request_data):
+		"""
+		Handles the client_auth BinAuth call. On this stage, BinAuth acknowledges that 
+		the client was authenticated by OpenNDS.
+
+		We will use this acknowledgement request to start the client time if it is not started yet.
+		"""
+		print('handled by client_auth')
+		print(request_data)
+		serialized_data = ClientAuthSerializer(data=request_data)
+		if not serialized_data.is_valid():
+			print(serialized_data.errors)
+			return Response(status=status.HTTP_400_BAD_REQUEST)
+		
+		validated_data = serialized_data.validated_data
+		try:
+			client = models.Clients.objects.get(MAC_Address=validated_data['client_mac'])
+			client.Connect()
+			return Response(status=status.HTTP_200_OK)
+		except models.Clients.DoesNotExist:
+			# Client not found. Lets return an arbitrary not found response
+			return Response(status=status.HTTP_404_NOT_FOUND)
+
+	def post(self, request):
+		# print(request.data)
+		method = request.data['method']
+		if method == 'auth_client':
+			return self.handle_auth_client(request.data)
+		elif method == 'client_auth':
+			return self.handle_client_auth(request.data)
+		print(method)
+		print(request.data)
+		return Response(status=status.HTTP_400_BAD_REQUEST)

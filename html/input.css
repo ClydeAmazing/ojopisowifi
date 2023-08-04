@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    html {
+      font-family: Proxima Nova, system-ui, sans-serif;
+    }
+  }
+
+.waves{
+    width: 300px;
+    height: 300px;
+    border-radius: 120px;
+    position: absolute;
+}
+.wave-1{
+    animation: fill-1 10s ease-in-out infinite
+}
+.wave-2{
+    animation: fill-2 10s ease-in-out infinite;
+}
+
+@keyframes fill-1{
+    from{
+        transform: rotate(22.5deg);
+    }
+    to{
+        transform: rotate(382.5deg);
+    }
+}
+@keyframes fill-2{
+    from{
+        transform: rotate(-22.5deg);
+    }
+    to{
+        transform: rotate(337.5deg);
+    }
+}
