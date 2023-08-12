@@ -303,8 +303,8 @@ class CoinQueueAdmin(NoLog, admin.ModelAdmin):
 
 class RatesAdmin(NoLog, admin.ModelAdmin):
     form = forms.RatesForm
-    list_display = ('Edit', 'Denom', 'Minutes', 'Minutes_Auto')
-    field_order = ('Minutes', 'Denom')
+    list_display = ('Edit', 'Denom', 'Duration')
+    field_order = ('Denom')
 
     def changelist_view(self, request, extra_context=None):
         extra_context = {'title': 'Wifi Rates'}

@@ -91,13 +91,17 @@ class Clients(models.Model):
         self.coin_queue.Total_Coins += amount
         self.coin_queue.save()
 
-    def Connect(self, add_time = timedelta(0)):
+    def Connect(self, add_time=None):
         """
         Credits session time stored in self.Time_Left field (populated during Pause)
         and any additional session time/credits(type of datetime.timedelta) passed to this function
 
         This function can also be used to 'Resume' client session time.
         """
+
+        if add_time is None:
+            add_time = timedelta(0)
+
         total_time = self.Time_Left + add_time
         success_flag = False
         if total_time > timedelta(0):
@@ -234,16 +238,23 @@ class CoinSlot(models.Model):
 
 class Rates(models.Model):
     Edit = "Edit"
-    Denom = models.IntegerField(verbose_name='Denomination', help_text="Coin denomination corresponding to specified coinslot pulse.")
-    Pulse = models.IntegerField(blank=True, null=True, help_text="Coinslot pulse count corresponding to coin denomination. Leave it blank for promotional rates.")
-    Minutes = models.DurationField(verbose_name='Duration (Custom)', default=timezone.timedelta(minutes=0), help_text='Internet access duration in hh:mm:ss format')
+    Denom = models.IntegerField(verbose_name='Denomination', 
+                                help_text="Coin denomination corresponding to specified coinslot pulse.")
+    Pulse = models.IntegerField(blank=True, 
+                                null=True, 
+                                help_text="Coinslot pulse count corresponding to coin denomination. Leave it blank for promotional rates.")
+    Minutes = models.DurationField(verbose_name='Duration (Custom)', 
+                                   default=timezone.timedelta(minutes=0), 
+                                   help_text='Internet access duration in hh:mm:ss format. This value can be overridden if rate type is Minutes/Peso in settings')
 
     @property
-    def Minutes_Auto(self):
+    def Duration(self):
         settings = Settings.objects.get(pk=1)
-        return timedelta(seconds=timedelta.total_seconds(self.Denom * settings.Base_Value))
+        if settings.Rate_Type == 'auto':
+            return timedelta(seconds=timedelta.total_seconds(self.Denom * settings.Base_Value))
+        return self.Minutes
 
-    Minutes_Auto.fget.short_description = "Duration (Auto)"
+    Duration.fget.short_description = "Duration"
 
     class Meta:
         verbose_name = "Rate"

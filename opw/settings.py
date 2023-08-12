@@ -19,12 +19,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # 'oauth2_provider',
+    'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
     'app',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -165,3 +167,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CELERY_BROKER_URL = "redis://redis:6379/0"
 
 LOGIN_URL='/app/admin/login/'
+
+# CORS Settings
+CORS_ALLOW_ALL_ORIGINS = True

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>OJO Pisowifi</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link rel='stylesheet' type='text/css' media='screen' href='main.css'>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- <script src='main.js'></script> -->
+</head>
+<body class="bg-gray-200" x-data="portal">
+    <div class="flex mt-3 px-6 min-w-[300px] justify-center items-center">
+        <div class="flex flex-col gap-2 w-full sm:w-[300px]">
+            <div class="w-full p-1">
+                <span class="font-medium text-gray-400" x-text="wifi_name"></span>
+            </div>
+            <div class="rounded-2xl shadow-lg p-2 bg-white">
+                <div class="text-gray-400 text-center">
+                    Remaining time
+                </div>
+                <div class="flex justify-center p-3 h-50">
+                    <div class="flex justify-center items-center w-[150px] h-[150px] rounded-full border-8 border-red-300 ring-2 ring-offset-2 ring-gray-200 hover:ring-blue-300 overflow-hidden relative shadow-inner transition-all">
+                        <div class="liquid absolute z-9 top-[50px] -left-[80px]">
+                            <div class="waves wave-1  bg-blue-200"></div>
+                            <div class="waves wave-2 bg-blue-300 overflow-hidden"></div>
+                        </div>
+                        <span class="text-gray-600 text-xs z-10 absolute top-[38px]" x-text="formatTime(remaining_time).formattedDays"></span>
+                        <span class="font-bold text-gray-600 text-2xl z-10" x-text="formatTime(remaining_time).formattedTime"></span>
+                        <span class="text-gray-600 text-xs z-10 absolute bottom-[35px]" x-text="status"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex rounded-2xl shadow-lg p-2 bg-white divide-x-[1.5px] divide-dashed">
+                <div class="flex items-center w-auto p-2">
+                    <button class="w-[50px] h-[50px] rounded-full shadow-lg shadow-gray-200 hover:shadow-gray-300 border-2  transition-shadow" x-bind:class="status == 'Connected' ? 'text-emerald-500 border-emerald-500' : 'text-gray-500 border-gray-500'" x-on:click="connect()">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 inline">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="w-full p-2 flex flex-col gap-2 justify-center">
+                    <div class="w-full flex gap-2">
+                        <button class="rounded-full px-4 py-2 text-gray-600 shadow-lg  shadow-gray-200 hover:shadow-gray-300 border-2 border-red-300 w-full transition-shadow">
+                            Add coins
+                        </button>
+                    </div>
+                    <div class="w-full">
+                        <button class="rounded-full px-4 py-2 text-white shadow-lg shadow-gray-200 hover:shadow-gray-300 bg-emerald-500 w-full transition-shadow">
+                            Buy Voucher
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="flex justify-between rounded-2xl shadow-lg p-3 bg-white text-xs text-gray-400">
+                <div class="">
+                    <span class="text-gray-500 font-bold">MAC &nbsp;</span><span x-text="mac_address"></span>
+                </div>
+                <div class="">
+                    <span class="text-gray-500 font-bold">IP &nbsp;</span><span x-text="ip_address"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+<script>
+    function formatTime(totalSeconds) {
+        const days = Math.floor(totalSeconds / (3600 * 24));
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = Math.floor(totalSeconds % 60);
+        
+        const formattedDays = days > 0 ? (days === 1 ? '1 day' : `${days} days`) : '';
+        const formattedTime = `${padWithZero(hours)}:${padWithZero(minutes)}:${padWithZero(seconds)}`;
+        return {
+            formattedDays, 
+            formattedTime
+        };
+    }
+
+    function padWithZero(value) {
+        return String(value).padStart(2, '0');
+    }
+
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('portal', () => ({
+            wifi_name: '',
+            mac_address: 'a8:93:4a:70:45:cd',
+            ip_address: '',
+            status: '',
+            remaining_time: 0,
+            rates: {},
+            base_api_url: 'http://localhost:8000/app/api/',
+            countdownInterval: null,
+            startCountdown() {
+                this.countdownInterval = setInterval(() => {
+                    this.remaining_time--;
+                    if (this.remaining_time <= 0) {
+                        // Countdown has reached zero, you can handle it here.
+                        clearInterval(this.countdownInterval);
+                        this.fetchData();
+                    }
+                }, 1000);
+            },
+            init() {
+                this.fetchData();
+            },
+            fetchData() {
+                fetch(this.base_api_url + 'user/' + this.mac_address + '/')
+                .then(response => response.json())
+                .then(data => {
+                    this.wifi_name = data.wifi_name;
+                    this.status = data.status;
+                    this.ip_address = data.ip_address;
+                    this.remaining_time = data.total_time;
+                    this.rates = data.rates;
+                    if(this.status == 'Connected'){
+                        this.startCountdown();
+                    }else{
+                        clearInterval(this.countdownInterval);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                });
+            },
+            connect() {
+                let action = this.status == 'Connected' ? 'pause' : 'connect';
+
+                fetch(this.base_api_url + 'user/' + this.mac_address + '/'+ action +'/',{
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success){
+                        this.fetchData();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error connecting client:', error);
+                })
+            }
+        }))
+    });
+</script>
+</body>
+</html>

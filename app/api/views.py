@@ -203,3 +203,37 @@ class CreateUser(APIView):
 		print(method)
 		print(request.data)
 		return Response(status=status.HTTP_400_BAD_REQUEST)
+
+class GetUser(APIView):
+	authentication_classes = []
+	permission_classes = []
+
+	def get(self, request, client_mac):
+		try:
+			client = models.Clients.objects.get(MAC_Address=client_mac)
+			rates = models.Rates.objects.all()
+			data = {
+				'wifi_name': client.Settings.Hotspot_Name,
+				'status': client.Connection_Status,
+				'mac_address': client.MAC_Address,
+				'ip_address': client.IP_Address,
+				'total_time': client.Time_Left if client.Connection_Status == 'Paused' else client.running_time,
+				'rates': {rate.Denom: rate.Duration for rate in rates}
+			}
+			return Response(data, status=status.HTTP_200_OK)
+		except models.Clients.DoesNotExist:
+			return Response(status=status.HTTP_404_NOT_FOUND)
+		
+	def post(self, request, client_mac, action):
+		try:
+			client = models.Clients.objects.get(MAC_Address=client_mac)
+			response = False
+			if action in ['connect', 'resume']:
+				response = client.Connect()
+			elif action == 'pause':
+				response = client.Pause()
+			else:
+				return Response(status=status.HTTP_404_NOT_FOUND)
+			return Response({'success':response}, status=status.HTTP_200_OK)
+		except models.Clients.DoesNotExist:
+			return Response(status=status.HTTP_404_NOT_FOUND)
