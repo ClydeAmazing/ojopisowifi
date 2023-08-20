@@ -5,8 +5,9 @@
     <meta http-equiv='X-UA-Compatible' content='IE=edge'>
     <title>OJO Pisowifi</title>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <link rel='stylesheet' type='text/css' media='screen' href='main.css'>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel='stylesheet' type='text/css' media='screen' href='/main.css'>
+    <script defer src="/alpine.min.js"></script>
+    <!-- <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script> -->
     <!-- <script src='main.js'></script> -->
 </head>
 <body class="bg-gray-200" x-data="portal">
@@ -62,6 +63,11 @@
             </div>
         </div>
     </div>
+    <form method="get" action="$authaction" id="auth_form">
+        <input type="hidden" name="tok" value="$tok">
+        <input type="hidden" name="redir" value="$redir">
+        <input type="hidden" value="Continue">
+    </form>
 <script>
     function formatTime(totalSeconds) {
         const days = Math.floor(totalSeconds / (3600 * 24));
@@ -84,12 +90,13 @@
     document.addEventListener('alpine:init', () => {
         Alpine.data('portal', () => ({
             wifi_name: '',
-            mac_address: 'a8:93:4a:70:45:cd',
+            // mac_address: 'a8:93:4a:70:45:cd',
+            mac_address: '$client_mac',
             ip_address: '',
             status: '',
             remaining_time: 0,
             rates: {},
-            base_api_url: 'http://localhost:8000/app/api/',
+            base_api_url: 'http://192.168.8.181:8000/app/api/',
             countdownInterval: null,
             startCountdown() {
                 this.countdownInterval = setInterval(() => {
@@ -131,8 +138,10 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success){
+                    if (data.success && action == 'connect'){
                         this.fetchData();
+                        const authForm = document.getElementById('auth_form');
+                        authForm.submit();
                     }
                 })
                 .catch(error => {
