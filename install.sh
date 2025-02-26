@@ -40,15 +40,22 @@ chown sudoadmin:root /home/sudoadmin/src/ojopisowifi/db.sqlite3
 chmod +x /home/sudoadmin/src/ojopisowifi/hooks.py
 chmod +x /home/sudoadmin/src/ojopisowifi/sweep.py
 echo ''
-echo 'Removing default nginx profile'
-rm /etc/nginx/sites-enabled/default
-echo ''
 echo 'Copying system files to target locations'
 cp /home/sudoadmin/src/ojopisowifi/files/gunicorn.service /etc/systemd/system/gunicorn.service
 cp /home/sudoadmin/src/ojopisowifi/files/hooks.service /etc/systemd/system/hooks.service
 cp /home/sudoadmin/src/ojopisowifi/files/opw_init.service /etc/systemd/system/opw_init.service
 cp /home/sudoadmin/src/ojopisowifi/files/sweep.service /etc/systemd/system/sweep.service
-cp /home/sudoadmin/src/ojopisowifi/files/opw.conf /etc/nginx/conf.d/
+echo ''
+echo 'Removing default nginx profile'
+rm /etc/nginx/sites-enabled/default
+echo ''
+echo 'Setting up new ojo nginx profile'
+cp /home/sudoadmin/src/ojopisowifi/files/opw /etc/nginx/sites-available/
+sudo ln -s /etc/nginx/sites-available/opw /etc/nginx/sites-enabled/
+echo ''
+echo 'Updating root directory permissions'
+sudo chmod 755 /home/sudoadmin
+sudo chmod 755 /home/sudoadmin/src
 echo ''
 echo 'Reloading daemon files'
 systemctl daemon-reload
