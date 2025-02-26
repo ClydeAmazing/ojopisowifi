@@ -20,6 +20,14 @@ files = [
     {
         'file': './theme_click-to-continue-legacy.sh',
         'target': '/usr/lib/opennds/'
+    },
+    {
+        'file': '../opennds/ojo_binauth.sh',
+        'target': '/usr/lib/opennds/'
+    },
+    {
+        'file': './client_params.sh',
+        'target': '/usr/lib/opennds/'
     }
 ]
 

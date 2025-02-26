@@ -2,8 +2,8 @@
 
 # Define API endpoint URL
 # API_URL="http://localhost:8000/app/api/create_user/"
-API_URL="http://192.168.8.181:8000/app/api/create_user/"  # Replace this with the actual API endpoint URL
-ENCRYPTION_KEY="YourEncryptionKey"
+API_URL="http://192.168.8.168:8000/app/api/create_user/"  # Replace this with the actual API endpoint URL
+# ENCRYPTION_KEY="YourEncryptionKey"
 API_TOKEN="3a3ab3815478ca093c50a3b4a59ad80086bd2772"
 TIMEOUT_SECONDS=5
 
@@ -27,7 +27,7 @@ if [ $action = "auth_client" ]; then
     }
 EOF
     )
-elif [ "$1" == "ndsctl_auth" ]; then
+elif [ $action == "ndsctl_auth" ]; then
     # Construct the JSON data for ndsctl_auth
     JSON_DATA=$(cat <<-EOF
     {
@@ -65,7 +65,7 @@ fi
 API_RESPONSE=$(curl -s -X POST -w "\n%{http_code}" "${API_URL}" \
     -H "Content-Type: application/json" \
     -H "Authorization: Token $API_TOKEN" \
-    -d "${JSON_DATA}" \
+    -d "${JSON_DATA}" \API_TOKEN
     -m $TIMEOUT_SECONDS)
 
 # Extract the HTTP status code and API response from the captured data
