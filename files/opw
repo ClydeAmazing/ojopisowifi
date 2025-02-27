@@ -1,15 +1,15 @@
 server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
+    listen 8000 default_server;
+    listen [::]:8000 default_server;
     server_name _;
     
     location = /favicon.ico { access_log off; log_not_found off; }
     location /static/ {
-        root /home/sudoadmin/src/opw_src;
+        root /home/sudoadmin/src/ojopisowifi;
     }
 
     location / {
         include proxy_params;
-        proxy_pass http://unix:/home/sudoadmin/src/opw_src/opw.sock;
+        proxy_pass http://unix:/home/sudoadmin/src/ojopisowifi/opw.sock;
     }
 }
