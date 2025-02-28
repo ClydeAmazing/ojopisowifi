@@ -109,13 +109,12 @@ systemctl restart dnsmasq
 # Configure the LAN interface with a static IP
 echo "Configuring LAN interface with static IP..."
 cat > /etc/network/interfaces << EOF
-auto $lan_iface
 iface $lan_iface inet static
 address 192.168.1.1
 netmask 255.255.255.0
 EOF
 
 # Restart networking service to apply changes
-systemctl restart networking
+systemctl restart systemd-networkd
 
 echo "Router setup complete. Please reboot the device for changes to take full effect."
