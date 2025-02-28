@@ -33,10 +33,14 @@ pip install -r <(grep -v cryptography /home/sudoadmin/src/ojopisowifi/requiremen
 echo ''
 echo 'Installing cryptography package'
 pip install cryptography --index-url=https://www.piwheels.org/simple
+echo ''
+echo 'Updating root directory permissions'
+sudo chmod 755 /home/sudoadmin
+sudo chmod 755 /home/sudoadmin/src
 echo  ''
 echo 'Setting file permissions'
-chown sudoadmin:root /home/sudoadmin/src/ojopisowifi/ 
-chown sudoadmin:root /home/sudoadmin/src/ojopisowifi/db.sqlite3 
+sudo chown -R sudoadmin:www-data /home/sudoadmin/src/ojopisowifi/
+sudo chown sudoadmin:www-data /home/sudoadmin/src/ojopisowifi/db.sqlite3
 chmod +x /home/sudoadmin/src/ojopisowifi/hooks.py
 chmod +x /home/sudoadmin/src/ojopisowifi/sweep.py
 echo ''
@@ -52,10 +56,6 @@ echo ''
 echo 'Setting up new ojo nginx profile'
 cp /home/sudoadmin/src/ojopisowifi/files/opw /etc/nginx/sites-available/
 sudo ln -s /etc/nginx/sites-available/opw /etc/nginx/sites-enabled/
-echo ''
-echo 'Updating root directory permissions'
-sudo chmod 755 /home/sudoadmin
-sudo chmod 755 /home/sudoadmin/src
 echo ''
 echo 'Reloading daemon files'
 systemctl daemon-reload
