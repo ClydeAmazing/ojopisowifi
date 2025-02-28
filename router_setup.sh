@@ -1,13 +1,17 @@
 #!/bin/bash
 
+echo "Detecting iptables..."
+
 # Check if iptables is installed
 if ! command -v iptables &> /dev/null; then
-    echo "Error: iptables is not installed. Installing now..."
+    echo "iptables is not installed. Installing now..."
     apt update && apt install -y iptables || { echo "Failed to install iptables. Exiting."; exit 1; }
 fi
 
+echo "Detecting iptables-persistent..."
+
 # Ensure iptables-persistent is installed
-if ! dpkg -l | grep -q iptables-persistent; then
+if ! command -v iptables-persistent &> /dev/null; then
     echo "iptables-persistent is not installed. Installing now..."
     apt update && apt install -y iptables-persistent || { echo "Failed to install iptables-persistent. Exiting."; exit 1; }
 fi
@@ -74,6 +78,9 @@ sysctl -w net.ipv4.ip_forward=1
 iptables -t nat -A POSTROUTING -o $wan_iface -j MASQUERADE
 iptables -A FORWARD -i $wan_iface -o $lan_iface -m state --state RELATED,ESTABLISHED -j ACCEPT
 iptables -A FORWARD -i $lan_iface -o $wan_iface -j ACCEPT
+
+# Ensure the directory exists before saving rules
+mkdir -p /etc/iptables
 
 # Save iptables rules
 iptables-save > /etc/iptables/rules.v4
