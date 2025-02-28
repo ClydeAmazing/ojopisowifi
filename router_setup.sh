@@ -122,7 +122,7 @@ systemctl restart dnsmasq
 
 echo "Setting up network interfaces"
 # Backup the default netplan configuration
-mv 10-dhcp-all-interfaces.yaml 10-dhcp-all-interfaces.yaml.orig
+mv /etc/netplan/10-dhcp-all-interfaces.yaml /etc/netplan/10-dhcp-all-interfaces.yaml.orig
 
 # Configure the interfaces
 cat > /etc/netplan/20-ojo-interfaces.yaml << EOF
@@ -143,6 +143,9 @@ network:
           - 1.1.1.1
       dhcp4: no
 EOF
+
+# According to the Netplan docs, the permissions must be restricted to the root user.
+sudo chmod 600 /etc/netplan/*.yaml
 
 # Apply netplan configuration
 netplan apply
