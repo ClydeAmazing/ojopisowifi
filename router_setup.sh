@@ -70,7 +70,8 @@ systemctl restart dnsmasq
 
 # Configure the LAN interface with a static IP
 echo "Configuring LAN interface with static IP..."
-cat > /etc/network/interfaces.d/$lan_iface.cfg << EOF
+cat >> /etc/network/interfaces << EOF
+auto $lan_iface
 iface $lan_iface inet static
 address 192.168.1.1
 netmask 255.255.255.0
