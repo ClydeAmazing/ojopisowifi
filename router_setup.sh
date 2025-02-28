@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Check if iptables is installed
+if ! command -v iptables &> /dev/null; then
+    echo "Error: iptables is not installed. Installing now..."
+    apt update && apt install -y iptables || { echo "Failed to install iptables. Exiting."; exit 1; }
+fi
+
 # Detect available network interfaces
 echo "Detecting available network interfaces..."
 interfaces=$(ip -o link show | awk -F': ' '{print $2}' | grep -v lo)
@@ -52,12 +58,6 @@ while true; do
         echo "Invalid choice. Please select a valid LAN interface."
     fi
 done
-
-# Ensure iptables is installed
-if ! command -v iptables &> /dev/null; then
-    echo "iptables not found. Installing..."
-    apt update && apt install iptables -y
-fi
 
 # Ensure iptables is in PATH
 export PATH=$PATH:/sbin:/usr/sbin
