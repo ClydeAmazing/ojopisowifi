@@ -6,6 +6,12 @@ if ! command -v iptables &> /dev/null; then
     apt update && apt install -y iptables || { echo "Failed to install iptables. Exiting."; exit 1; }
 fi
 
+# Ensure iptables-persistent is installed
+if ! dpkg -l | grep -q iptables-persistent; then
+    echo "iptables-persistent is not installed. Installing now..."
+    apt update && apt install -y iptables-persistent || { echo "Failed to install iptables-persistent. Exiting."; exit 1; }
+fi
+
 # Detect available network interfaces
 echo "Detecting available network interfaces..."
 interfaces=$(ip -o link show | awk -F': ' '{print $2}' | grep -v lo)
