@@ -85,10 +85,30 @@ mkdir -p /etc/iptables
 # Save iptables rules
 iptables-save > /etc/iptables/rules.v4
 
+# Configure /etc/default/dnsmasq to ignore resolvconf and exclude loopback
+echo "Configuring /etc/default/dnsmasq..."
+sed -i 's/^#IGNORE_RESOLVCONF=.*/IGNORE_RESOLVCONF=yes/' /etc/default/dnsmasq
+sed -i 's/^#DNSMASQ_EXCEPT=.*/DNSMASQ_EXCEPT="lo"/' /etc/default/dnsmasq
+
+# Ensure that the lines are uncommented correctly
+if ! grep -q "IGNORE_RESOLVCONF=yes" /etc/default/dnsmasq; then
+    echo "ERROR: Could not configure IGNORE_RESOLVCONF in /etc/default/dnsmasq"
+    exit 1
+fi
+
+if ! grep -q 'DNSMASQ_EXCEPT="lo"' /etc/default/dnsmasq; then
+    echo "ERROR: Could not configure DNSMASQ_EXCEPT in /etc/default/dnsmasq"
+    exit 1
+fi
+
+echo "Successfully configured /etc/default/dnsmasq"
+
 # Set up DHCP using dnsmasq
 echo "Setting up dnsmasq for DHCP on LAN interface..."
 cat > /etc/dnsmasq.conf << EOF
 interface=$lan_iface
+bind-interfaces
+no-resolv
 dhcp-range=192.168.1.50,192.168.1.150,12h
 server=8.8.8.8
 server=1.1.1.1
@@ -99,7 +119,7 @@ systemctl restart dnsmasq
 
 # Configure the LAN interface with a static IP
 echo "Configuring LAN interface with static IP..."
-cat >> /etc/network/interfaces << EOF
+cat > /etc/network/interfaces << EOF
 auto $lan_iface
 iface $lan_iface inet static
 address 192.168.1.1
