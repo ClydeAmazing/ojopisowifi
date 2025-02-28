@@ -1,20 +1,9 @@
 #!/bin/bash
 
-echo "Detecting iptables..."
+echo "Installing dependencies..."
 
 # Check if iptables is installed
-if ! command -v iptables &> /dev/null; then
-    echo "iptables is not installed. Installing now..."
-    apt update && apt install -y iptables || { echo "Failed to install iptables. Exiting."; exit 1; }
-fi
-
-echo "Detecting iptables-persistent..."
-
-# Ensure iptables-persistent is installed
-if ! command -v iptables-persistent &> /dev/null; then
-    echo "iptables-persistent is not installed. Installing now..."
-    apt update && apt install -y iptables-persistent || { echo "Failed to install iptables-persistent. Exiting."; exit 1; }
-fi
+apt update && apt install -y iptables iptables-persistent
 
 # Detect available network interfaces
 echo "Detecting available network interfaces..."
