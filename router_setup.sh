@@ -26,6 +26,7 @@ is_valid_interface() {
 while true; do
     read -p "Enter the number for the WAN (internet) interface: " wan_choice
     wan_iface=$(echo "$interfaces" | sed -n "${wan_choice}p")
+    
     if is_valid_interface "$wan_iface"; then
         echo "Selected WAN interface: $wan_iface"
         break
@@ -34,17 +35,32 @@ while true; do
     fi
 done
 
-# Prompt the user to select the LAN interface (must be different from WAN)
+# Prompt the user to select the LAN interface
 while true; do
     read -p "Enter the number for the LAN (local network) interface: " lan_choice
     lan_iface=$(echo "$interfaces" | sed -n "${lan_choice}p")
-    if is_valid_interface "$lan_iface" && [[ "$lan_iface" != "$wan_iface" ]]; then
+
+    if [[ "$lan_iface" == "$wan_iface" ]]; then
+        echo "LAN and WAN interfaces cannot be the same. Please select a different LAN interface."
+        continue
+    fi
+
+    if is_valid_interface "$lan_iface"; then
         echo "Selected LAN interface: $lan_iface"
         break
     else
-        echo "Invalid choice. Please select a valid LAN interface that is different from WAN."
+        echo "Invalid choice. Please select a valid LAN interface."
     fi
 done
+
+# Ensure iptables is installed
+if ! command -v iptables &> /dev/null; then
+    echo "iptables not found. Installing..."
+    apt update && apt install iptables -y
+fi
+
+# Ensure iptables is in PATH
+export PATH=$PATH:/sbin:/usr/sbin
 
 # Set up IP forwarding and NAT
 echo "Setting up IP forwarding and NAT..."
