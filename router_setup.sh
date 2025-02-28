@@ -3,7 +3,8 @@
 echo "Installing dependencies..."
 
 # Check if iptables is installed
-apt update && apt install -y iptables iptables-persistent
+# Note: Added openvswitch-switch-dpdk to fix the netplan apply warning
+apt update && apt install -y iptables iptables-persistent openvswitch-switch-dpdk
 
 # Detect available network interfaces
 echo "Detecting available network interfaces..."
@@ -63,7 +64,20 @@ export PATH=$PATH:/sbin:/usr/sbin
 
 # Set up IP forwarding and NAT
 echo "Setting up IP forwarding and NAT..."
+
+# Configure ipv4 forwarding
+sed -i 's/^#net.ipv4.ip_forward=.*/net.ipv4.ip_forward=1/' /etc/sysctl.conf
+
+# Ensure that the lines are uncommented correctly
+if ! grep -q "net.ipv4.ip_forward=1" /etc/sysctl.conf; then
+    echo "ERROR: Could not configure net.ipv4.ip_forward=1 in /etc/sysctl.conf"
+    exit 1
+fi
+
+# Apply forwarding immediately
 sysctl -w net.ipv4.ip_forward=1
+sysctl -p
+
 iptables -t nat -A POSTROUTING -o $wan_iface -j MASQUERADE
 iptables -A FORWARD -i $wan_iface -o $lan_iface -m state --state RELATED,ESTABLISHED -j ACCEPT
 iptables -A FORWARD -i $lan_iface -o $wan_iface -j ACCEPT
@@ -106,13 +120,32 @@ EOF
 # Restart dnsmasq to apply the changes
 systemctl restart dnsmasq
 
-# Configure the LAN interface with a static IP
-echo "Configuring LAN interface with static IP..."
-cat > /etc/network/interfaces << EOF
-iface $lan_iface inet static
-address 192.168.1.1
-netmask 255.255.255.0
+echo "Setting up network interfaces"
+# Backup the default netplan configuration
+mv 10-dhcp-all-interfaces.yaml 10-dhcp-all-interfaces.yaml.orig
+
+# Configure the interfaces
+cat > /etc/netplan/20-ojo-interfaces.yaml << EOF
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    $wan_iface:
+      dhcp4: yes
+      dhcp6: yes
+      ipv6-privacy: yes
+    $lan_iface:
+      addresses:
+        - 192.168.1.1/24
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 1.1.1.1
+      dhcp4: no
 EOF
+
+# Apply netplan configuration
+netplan apply
 
 # Restart networking service to apply changes
 systemctl restart systemd-networkd
