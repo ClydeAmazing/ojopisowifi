@@ -15,7 +15,6 @@ done
 # Function to check if the input is a valid interface
 is_valid_interface() {
     local interface=$1
-    # Check if the selected interface is in the list
     if echo "$interfaces" | grep -wq "$interface"; then
         return 0  # valid interface
     else
@@ -35,15 +34,15 @@ while true; do
     fi
 done
 
-# Prompt the user to select the LAN interface
+# Prompt the user to select the LAN interface (must be different from WAN)
 while true; do
     read -p "Enter the number for the LAN (local network) interface: " lan_choice
     lan_iface=$(echo "$interfaces" | sed -n "${lan_choice}p")
-    if is_valid_interface "$lan_iface"; then
+    if is_valid_interface "$lan_iface" && [[ "$lan_iface" != "$wan_iface" ]]; then
         echo "Selected LAN interface: $lan_iface"
         break
     else
-        echo "Invalid choice. Please select a valid LAN interface."
+        echo "Invalid choice. Please select a valid LAN interface that is different from WAN."
     fi
 done
 
@@ -57,10 +56,7 @@ iptables -A FORWARD -i $lan_iface -o $wan_iface -j ACCEPT
 # Save iptables rules
 iptables-save > /etc/iptables/rules.v4
 
-# Set up DHCP using dnsmasq (this can be customized based on your choice)
-# Note:
-# dhcp-option=3 sets the gateway IP when IP address is handed over to the client (DHCP)
-# dhcp-option=6 sets the default DNS servers when IP address is handed over to the client (DHCP)
+# Set up DHCP using dnsmasq
 echo "Setting up dnsmasq for DHCP on LAN interface..."
 cat > /etc/dnsmasq.conf << EOF
 interface=$lan_iface
