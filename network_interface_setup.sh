@@ -2,7 +2,7 @@
 
 # Ensure the script is run as root
 if [ "$EUID" -ne 0 ]; then
-    echo "Please run as root: sudo bash setup_predictable_names.sh"
+    echo "Please run as root: sudo bash network_interface_setup.sh"
     exit 1
 fi
 
