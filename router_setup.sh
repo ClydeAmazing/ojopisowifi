@@ -4,7 +4,7 @@ echo "Installing dependencies..."
 
 # Check if iptables is installed
 # Note: Added openvswitch-switch-dpdk to fix the netplan apply warning
-apt update && apt install -y iptables iptables-persistent openvswitch-switch-dpdk
+apt update && apt install -y iptables iptables-persistent openvswitch-switch-dpdk dnsmasq
 
 # Detect available network interfaces
 echo "Detecting available network interfaces..."
