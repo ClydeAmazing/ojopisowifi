@@ -2,7 +2,7 @@
 
 # Define versions
 LIBMICROHTTPD_VERSION="0.9.71"
-OPENNDS_VERSION="9.10.0"
+OPENNDS_VERSION="9.9.1"
 echo "Installing build dependencies"
 apt update && apt install -y build-essential
 echo ""
@@ -29,3 +29,5 @@ echo "Building OpenNDS"
 make
 make install
 systemctl enable opennds
+echo "Starting OpenNDS"
+systemctl start opennds
