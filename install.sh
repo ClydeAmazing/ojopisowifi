@@ -10,7 +10,7 @@ echo 'Updating and upgrading system'
 apt-get update && apt-get dist-upgrade -y
 echo ''
 echo 'Installing dependencies'
-apt-get install build-essential libssl-dev libffi-dev python3-dev python3-venv python3-pip nginx dnsmasq gunicorn git systemd -y
+apt-get install build-essential libssl-dev libffi-dev python3-dev python3-venv python3-pip nginx gunicorn git systemd -y
 echo ''
 echo 'Creating src directory'
 mkdir /home/sudoadmin/src
@@ -83,13 +83,3 @@ deactivate
 echo ''
 echo 'Restarting nginx server'
 systemctl restart nginx.service
-# echo 'Backing up dnsmasq.conf'
-# mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
-# echo ''
-# echo 'Copying new dnsmasq config'
-# cp /home/sudoadmin/src/ojopisowifi/files/dnsmasq.conf /etc/dnsmasq.conf
-# echo ''
-# echo 'Backing up network interface config'
-# mv /etc/network/interfaces /etc/network/interfaces.orig
-# echo 'Copying new network interface config'
-# cp /home/sudoadmin/src/ojopisowifi/files/interfaces /etc/network/interfaces

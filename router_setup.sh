@@ -154,3 +154,8 @@ netplan apply
 systemctl restart systemd-networkd
 
 echo "Router setup complete. Please reboot the device for changes to take full effect."
+
+read -p "Reboot now? (y/n): " choice
+if [[ "$choice" =~ ^[Yy]$ ]]; then
+    reboot
+fi
