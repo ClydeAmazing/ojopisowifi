@@ -119,7 +119,6 @@ class Portal(View):
 
     def get(self, request):
         settings = getSettings()
-
         mac = request.session.get('mac', None)
 
         if not mac:
@@ -134,9 +133,8 @@ class Portal(View):
         return render(request, self.template_name, context=context)
 
     def post(self, request):
-        mac = request.session.get('mac', None)
-
         settings = getSettings()
+        mac = request.session.get('mac', None)
 
         if not mac:
             return redirect(settings['opennds_gateway'])
@@ -145,48 +143,42 @@ class Portal(View):
             action = request.POST['pause_resume']
             try:
                 client = models.Clients.objects.get(MAC_Address=mac)
-                can_pause = settings['pause_resume_flg']
-                
-                if action == 'pause':
-                    if not can_pause:
-                        resp = api_response(700)
-                        messages.error(request, resp['description'])
-
-                        return redirect('app:portal')
-                    pause_resume_enable_time = settings['pause_resume_enable_time']
-                    client_time = timedelta.total_seconds(client.running_time)
-
-                    if client_time > pause_resume_enable_time:
-                        client.Pause()
-                        messages.success(request, 'Internet connection paused. Resume when you are ready.')
-
-                    else:
-                        # TODO: Provide a proper message
-                        messages.error(request, 'Pause is not allowed.')
-
-                    return redirect('app:portal')
-
-                elif action == 'resume':
-                    client.Connect()
-                    messages.success(request, 'Internet connection resumed. Enjoy browsing the internet.')
-
-                    return redirect('app:portal')
-                    
-                else:
-                    resp = api_response(700)
-                    messages.error(request, resp['description'])
-
-                    return redirect('app:portal')
-
             except models.Clients.DoesNotExist:
+                messages.error(request, 'Unable to identify client.')
+                return redirect('app:portal')
 
-                resp = api_response(800)
-                messages.error(request, resp['description'])
+            can_pause = settings['pause_resume_flg']
+            
+            if action == 'pause':
+                if not can_pause:
+                    # TODO: Provide a proper message
+                    messages.error(request, 'Pause is not allowed.')
+                    return redirect('app:portal')
+
+                pause_resume_enable_time = settings['pause_resume_enable_time']
+                client_time = timedelta.total_seconds(client.running_time)
+
+                if client_time > pause_resume_enable_time:
+                    client.Pause()
+                    messages.success(request, 'Internet connection paused. Resume when you are ready.')
+
+                else:
+                    # TODO: Provide a proper message
+                    messages.error(request, 'Pause is not allowed.')
 
                 return redirect('app:portal')
 
+            if action == 'resume':
+                if client.Connect():
+                    messages.success(request, 'Internet connection resumed. Enjoy browsing the internet.')
+
+                return redirect('app:portal')
+
+            # Any other actions is invalid
+            messages.error(request, 'Invalid action.')
+            return redirect('app:portal')
+
         if 'insert_coin' in request.POST or 'extend' in request.POST:
-            success = True
             try:
                 client = models.Clients.objects.get(MAC_Address=mac)
                 
@@ -198,26 +190,22 @@ class Portal(View):
                     coinslot.Last_Updated = timezone.now()
                     coinslot.save()
 
+                    coin_queue, created = models.CoinQueue.objects.get_or_create(Client=client)
+                    if not created:
+                        coin_queue.save()
+
+                    # Start listening for inserted coins
+                    insert_coin.delay(client.id, settings['slot_light_pin'])
+                    messages.success(request, 'Please insert your coin(s).')
                 else:
-                    resp = api_response(600)
-                    messages.error(request, resp['description'])
-                    success = False
+                    messages.error(request, 'Someone is still paying. Please try again later.')
+                    
+                return redirect('app:portal')
 
             except models.Clients.DoesNotExist:
-                resp = api_response(500)
-                messages.error(request, resp['description'])
-                success = False
-
-            if success:
-                coin_queue, created = models.CoinQueue.objects.get_or_create(Client=client)
-                if not created:
-                    coin_queue.save()
-
-                insert_coin.delay(client.id, settings['slot_light_pin'])
-
-                messages.success(request, 'Please insert your coin(s).')
-            
-            return redirect('app:portal')
+                error_message = 'Session Timeout. <strong><a href="/app/portal">Click to refresh your browser.</a></strong>'
+                messages.error(request, error_message)
+                return redirect('app:portal')
 
         if 'connect' in request.POST:
             try:
@@ -285,26 +273,26 @@ class Redeem(View):
         
         settings = getSettings()
 
-        if mac and voucher_code:
-            try:
-                voucher = models.Vouchers.objects.get(Voucher_code=voucher_code.upper(), Voucher_status = 'Not Used')
-                
-                try:
-                    client = models.Clients.objects.get(MAC_Address=mac)
-                    voucher.redeem(client)
-
-                    messages.success(request, f'Voucher code {voucher.Voucher_code} successfully redeemed!')
-
-                except models.Clients.DoesNotExist:
-                    resp = api_response(800)
-                    messages.error(request, resp['description'])
-
-            except models.Vouchers.DoesNotExist:
-                resp = api_response(110)
-                messages.error(request, resp['description'])
-        else:
+        if not mac:
             return redirect(settings['opennds_gateway'])
-            
+        
+        if not voucher_code:
+            messages.error(request, 'Please enter Voucher Code')
+            return redirect('app:portal')
+
+        try:
+            client = models.Clients.objects.get(MAC_Address=mac)
+        except models.Clients.DoesNotExist:
+            return redirect(settings['opennds_gateway'])
+
+        try:
+            voucher = models.Vouchers.objects.get(Voucher_code=voucher_code.upper(), Voucher_status = 'Not Used')
+        except models.Vouchers.DoesNotExist:
+            messages.error(request, 'Invalid / Used / Expired voucher code.')
+            return redirect('app:portal')
+
+        voucher.redeem(client)
+        messages.success(request, f'Voucher code {voucher.Voucher_code} successfully redeemed!')
         return redirect('app:portal')
 
 class Commit(View):

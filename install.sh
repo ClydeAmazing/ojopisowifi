@@ -1,10 +1,42 @@
+#!/bin/bash
+
 echo 'OJO Pisowifi install script'
 echo ''
-echo 'Adding sudoadmin user and group'
-adduser -u 5678 --disabled-login  --gecos '' sudoadmin
+
+# Check if user exists
+if id "sudoadmin" &>/dev/null; then
+    echo "User 'sudoadmin' already exists. Skipping creation."
+else
+    echo 'Adding sudoadmin user and group'
+    adduser -u 5678 --disabled-login --gecos '' sudoadmin
+fi
+
 echo ''
-echo 'Adding sudoadmin to sudo group'
-usermod -aG sudo sudoadmin
+
+# Check if user is already in sudo group
+if groups sudoadmin | grep -q "\bsudo\b"; then
+    echo "User 'sudoadmin' is already in the sudo group."
+else
+    echo 'Adding sudoadmin to sudo group'
+    usermod -aG sudo sudoadmin
+fi
+
+# Restrict sudo to specific commands (Optional)
+SUDOERS_FILE="/etc/sudoers.d/sudoadmin"
+ALLOWED_COMMANDS="/usr/bin/ndsctl"
+
+if [[ -f "$SUDOERS_FILE" ]] && grep -Fxq "sudoadmin ALL=(root) NOPASSWD: $ALLOWED_COMMANDS" "$SUDOERS_FILE"; then
+    echo "Sudoers file is already configured."
+else
+    echo "sudoadmin ALL=(root) NOPASSWD: $ALLOWED_COMMANDS" > "$SUDOERS_FILE"
+    chmod 0440 "$SUDOERS_FILE"
+    echo "Restricted sudo access for 'sudoadmin'."
+fi
+
+echo ''
+echo "Setup complete. 'sudoadmin' can now run:"
+echo "$ALLOWED_COMMANDS"
+
 echo ''
 echo 'Updating and upgrading system'
 apt-get update && apt-get dist-upgrade -y

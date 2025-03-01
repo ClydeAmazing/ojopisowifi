@@ -17,7 +17,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Installing build dependencies"
-if ! apt update && apt install -y build-essential; then
+if ! apt update && apt install -y build-essential php-cli; then
     echo "Error installing build dependencies. Exiting."
     exit 1
 fi

@@ -251,21 +251,21 @@ if [ "$status" = "status" ] || [ "$status" = "err511" ]; then
 		ndsctlcmd="b64decode $b64query"
 		do_ndsctl
 		querystr=$ndsctlout	
+
+		# strip off leading "?" character
+		querystr=${querystr:1:1024}
+		queryvarlist=""
+
+		for element in $querystr; do
+			htmlentityencode "$element"
+			element=$entityencoded
+			varname=$(echo "$element" | awk -F'=' '$2!="" {printf "%s", $1}')
+			queryvarlist="$queryvarlist $varname"
+		done
+
+		query=$querystr
+		parse_variables
 	fi
-
-	# strip off leasing "?" character
-	querystr=${querystr:1:1024}
-	queryvarlist=""
-
-	for element in $querystr; do
-		htmlentityencode "$element"
-		element=$entityencoded
-		varname=$(echo "$element" | awk -F'=' '$2!="" {printf "%s", $1}')
-		queryvarlist="$queryvarlist $varname"
-	done
-
-	query=$querystr
-	parse_variables
 
 	# header
 	body
