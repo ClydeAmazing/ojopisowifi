@@ -1,5 +1,8 @@
+import psutil
+
 from django import forms
 from django.core.validators import validate_ipv4_address
+
 from app import models
 
 class ClientsForm(forms.ModelForm):
@@ -17,6 +20,8 @@ class ClientsForm(forms.ModelForm):
 		}
 
 class NetworkForm(forms.ModelForm):
+	wan_port = forms.ChoiceField()
+	lan_port = forms.ChoiceField()
 	Server_IP= forms.CharField(widget=forms.TextInput
 		(attrs={'class':'vTextField'}), validators=[validate_ipv4_address])
 	Netmask= forms.CharField(widget= forms.TextInput
@@ -29,6 +34,25 @@ class NetworkForm(forms.ModelForm):
 	class Meta:
 		model = models.Network
 		fields = '__all__'
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		ethernet_ports = [
+			(port, port) for port in psutil.net_if_addrs() 
+			# if port.startswith('en') or port.startswith('eth')
+		]
+		self.fields['wan_port'].choices = ethernet_ports
+		self.fields['lan_port'].choices = ethernet_ports
+
+	def clean(self):
+		cleaned_data = super().clean()
+		wan_port = cleaned_data.get('wan_port')
+		lan_port = cleaned_data.get('lan_port')
+
+		if wan_port and lan_port and wan_port == lan_port:
+			raise forms.ValidationError('WAN port and LAN port cannot be the same.')
+		
+		return cleaned_data
 
 class VouchersForm(forms.ModelForm):
 
@@ -53,6 +77,7 @@ class SettingsForm(forms.ModelForm):
 		if coinslot_pin and light_pin:
 			if coinslot_pin == light_pin:
 				self.add_error(None, 'Coinslot Pin should not be the same as Light Pin.')
+		return cleaned_data
 
 	class Meta:
 		model = models.Settings

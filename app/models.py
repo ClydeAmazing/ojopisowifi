@@ -314,6 +314,8 @@ class CoinQueue(models.Model):
 
 class Network(models.Model):
     Edit = "Edit"
+    wan_port = models.CharField(max_length=100, null=True, blank=True, help_text='Internet facing ethernet port.')
+    lan_port = models.CharField(max_length=100, null=True, blank=True, help_text='Local Network port. The port used by the wifi access point.')
     Server_IP = models.GenericIPAddressField(verbose_name='Server IP', protocol='IPv4', default='10.0.0.1')
     Netmask = models.GenericIPAddressField(protocol='IPv4', default='255.255.255.0')
     DNS_1 = models.GenericIPAddressField(protocol='IPv4', verbose_name='DNS 1', default='8.8.8.8')
@@ -327,6 +329,33 @@ class Network(models.Model):
 
     def __str__(self):
         return 'Network Settings'
+    
+    def save(self, *args, **kwargs):
+        # Save the instance
+        super().save(*args, **kwargs)
+
+        # Save the config to its designated locations
+        self.save_to_config()
+        
+    def save_to_config(self):
+        """
+        Saves the configurations to its designated config files
+        """
+        dnsmasq_config = self.generate_dnsmasq_config()
+        print(dnsmasq_config)
+
+    def generate_dnsmasq_config(self):
+        """Generates dnsmasq.conf configuration file"""
+
+        config = f"""
+            interface={self.lan_port}
+            bind-interfaces
+            no-resolv
+            dhcp-range=192.168.1.50,192.168.1.150,12h
+            server={self.DNS_1}
+            server={self.DNS_2}
+        """
+        return config
 
 class Vouchers(models.Model):
     status_choices = (

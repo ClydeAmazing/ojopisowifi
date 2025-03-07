@@ -1,5 +1,7 @@
-from app.models import Clients, Whitelist, Device, Network
 import subprocess
+import psutil
+
+from app.models import Clients, Whitelist, Device, Network
 
 def run_command(command):
     try:

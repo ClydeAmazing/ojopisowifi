@@ -266,9 +266,9 @@ class SettingsAdmin(NoLog, Singleton, admin.ModelAdmin):
         super(SettingsAdmin, self).save_model(request, obj, form, change)
 
 class NetworkAdmin(NoLog, Singleton, admin.ModelAdmin):
-    # form = forms.NetworkForm
+    form = forms.NetworkForm
     list_display = ('Edit', 'Upload_Rate', 'Download_Rate')
-    exclude = ('Server_IP', 'Netmask', 'DNS_1', 'DNS_2')
+    # exclude = ('Server_IP', 'Netmask', 'DNS_1', 'DNS_2')
 
     def changelist_view(self, request, extra_context=None):
         extra_context = {'title': 'Global Network Settings'}

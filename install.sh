@@ -40,90 +40,85 @@ echo "$ALLOWED_COMMANDS"
 echo ''
 echo 'Updating and upgrading system'
 apt-get update && apt-get dist-upgrade -y
+
 echo ''
 echo 'Installing dependencies'
 apt-get install build-essential libssl-dev libffi-dev python3-dev python3-venv python3-pip nginx gunicorn git systemd redis-server -y
+
 echo ''
 echo 'Creating src directory'
-mkdir /home/sudoadmin/src
+mkdir -p /home/sudoadmin/src
+
 echo ''
 echo 'Creating python virtual environment'
 python3 -m venv /home/sudoadmin/src/venv
+
 echo ''
-echo 'Downloading source code from github'
+echo 'Downloading/updating source code from github'
 export GIT_SSL_NO_VERIFY=1
 git clone https://github.com/ClydeAmazing/ojopisowifi.git /home/sudoadmin/src/ojopisowifi/
+
 echo ''
 echo 'Activating virtual environment'
 source /home/sudoadmin/src/venv/bin/activate
+
 echo ''
 echo 'Upgrading python pip, setuptools and wheel'
 pip install --upgrade pip setuptools wheel --trusted-host pypi.org --trusted-host files.pythonhosted.org
+
 echo ''
 echo 'Installing ojopisowifi app dependencies'
 pip install -r <(grep -v cryptography /home/sudoadmin/src/ojopisowifi/requirements.txt) --trusted-host pypi.org --trusted-host files.pythonhosted.org
+
 echo ''
 echo 'Installing cryptography package'
 pip install cryptography --index-url=https://www.piwheels.org/simple
+
 echo ''
-echo 'Updating root directory permissions'
+echo 'Updating directory permissions'
 sudo chmod 755 /home/sudoadmin
 sudo chmod 755 /home/sudoadmin/src
-echo  ''
-echo 'Setting file permissions'
 sudo chown -R sudoadmin:www-data /home/sudoadmin/src/ojopisowifi/
 sudo chown sudoadmin:www-data /home/sudoadmin/src/ojopisowifi/db.sqlite3
 chmod +x /home/sudoadmin/src/ojopisowifi/hooks.py
 chmod +x /home/sudoadmin/src/ojopisowifi/sweep.py
+
 echo ''
 echo 'Copying system files to target locations'
-cp /home/sudoadmin/src/ojopisowifi/files/gunicorn.service /etc/systemd/system/gunicorn.service
-cp /home/sudoadmin/src/ojopisowifi/files/celery.service /etc/systemd/system/celery.service
-cp /home/sudoadmin/src/ojopisowifi/files/hooks.service /etc/systemd/system/hooks.service
-cp /home/sudoadmin/src/ojopisowifi/files/opw_init.service /etc/systemd/system/opw_init.service
-cp /home/sudoadmin/src/ojopisowifi/files/sweep.service /etc/systemd/system/sweep.service
+cp -f /home/sudoadmin/src/ojopisowifi/files/gunicorn.service /etc/systemd/system/gunicorn.service
+cp -f /home/sudoadmin/src/ojopisowifi/files/celery.service /etc/systemd/system/celery.service
+cp -f /home/sudoadmin/src/ojopisowifi/files/hooks.service /etc/systemd/system/hooks.service
+cp -f /home/sudoadmin/src/ojopisowifi/files/opw_init.service /etc/systemd/system/opw_init.service
+cp -f /home/sudoadmin/src/ojopisowifi/files/sweep.service /etc/systemd/system/sweep.service
+
 echo ''
-echo 'Removing default nginx profile'
-rm /etc/nginx/sites-enabled/default
+echo 'Configuring NGINX'
+rm -f /etc/nginx/sites-enabled/default
+cp -f /home/sudoadmin/src/ojopisowifi/files/opw /etc/nginx/sites-available/
+ln -sf /etc/nginx/sites-available/opw /etc/nginx/sites-enabled/
+
 echo ''
-echo 'Setting up new ojo nginx profile'
-cp /home/sudoadmin/src/ojopisowifi/files/opw /etc/nginx/sites-available/
-sudo ln -s /etc/nginx/sites-available/opw /etc/nginx/sites-enabled/
-echo ''
-echo 'Reloading daemon files'
+echo 'Reloading systemd daemon'
 systemctl daemon-reload
+
 echo ''
-echo 'Enabling redis service'
-systemctl enable redis-server.service
-echo ''
-echo 'Enabling gunicorn service'
-systemctl enable gunicorn.service
-echo ''
-echo 'Enabling celery service'
-systemctl enable celery.service
-echo ''
-echo 'Enabling hooks service'
-systemctl enable hooks.service
-echo ''
-echo 'Enabling opw_init service'
-systemctl enable opw_init.service
-echo ''
-echo 'Enabling client sweeper service'
-systemctl enable sweep.service
-echo ''
-echo 'Starting services'
-systemctl start gunicorn.service
-systemctl start redis-server
-systemctl start celery.service
-systemctl start hooks.service
-systemctl start opw_init.service
-systemctl start sweep.service
+echo 'Enabling and force restarting services'
+for service in redis-server gunicorn celery hooks opw_init sweep; do
+    systemctl enable "$service".service
+    systemctl restart "$service".service
+done
+
 echo ''
 echo 'Performing collecstatic command'
 python /home/sudoadmin/src/ojopisowifi/manage.py collectstatic --no-input > /dev/null
+
 echo ''
 echo 'Deactivating Python Virtual Environment'
 deactivate
+
 echo ''
 echo 'Restarting nginx server'
 systemctl restart nginx.service
+
+echo ''
+echo 'Installation/update complete!'
