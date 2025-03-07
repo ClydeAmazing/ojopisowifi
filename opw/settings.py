@@ -164,7 +164,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Celery Configurations
 # CELERY_TIMEZONE = "Asia/Riyadh"
-CELERY_BROKER_URL = "redis://redis:6379/0"
+CELERY_BROKER_URL = "redis://localhost:6379/0"
 
 LOGIN_URL='/app/admin/login/'
 

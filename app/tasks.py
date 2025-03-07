@@ -1,12 +1,13 @@
-from celery import shared_task
-from app import models
-from app.utils import run_command
 import requests, json, time
+from celery import shared_task
+
+from app.models import Clients, CoinSlot, PushNotifications
+from app.utils import run_command
 
 def send_push_notif():
     try:
-        clients = models.Clients.objects.filter(Notified_Flag=False)
-        push_notif = models.PushNotifications.objects.get(pk=1)
+        clients = Clients.objects.filter(Notified_Flag=False)
+        push_notif = PushNotifications.objects.get(pk=1)
         if clients and push_notif.Enabled:
             app_id = push_notif.app_id
             notif_title = push_notif.notification_title
@@ -23,7 +24,7 @@ def send_push_notif():
             host = "https://onesignal.com/api/v1/notifications"
             response = requests.post(host, headers=header, data=json.dumps(payload))
             if response.status_code == 200:
-                models.Clients.objects.filter(Notification_ID__in=player_ids).update(Notified_Flag=True)
+                Clients.objects.filter(Notification_ID__in=player_ids).update(Notified_Flag=True)
     except Exception:
         pass
 
@@ -37,21 +38,21 @@ def toggle_slot(action, light_pin):
 
 @shared_task
 def insert_coin(client_id, slot_light_pin):
-    slot_available = False
     print('Turn on light')
     toggle_slot('ON', slot_light_pin)
 
-    while not slot_available:
+    while range(120): # Max number of iteration to prevent infinite loop
         try:
-            client = models.Clients.objects.get(id=client_id)
+            client = Clients.objects.get(id=client_id)
             slot = client.coin_slot.latest()
 
-            slot_available = slot.is_available
-
-        except (models.Clients.DoesNotExist, models.CoinSlot.DoesNotExist):
-            slot_available = True
-
-        time.sleep(.5)
-
-    print('Turn off light')
-    toggle_slot('OFF', slot_light_pin)
+            if slot.is_available:
+                print('Turn off light')
+                toggle_slot('OFF', slot_light_pin)
+                break
+            
+            time.sleep(1)
+        except (Clients.DoesNotExist, CoinSlot.DoesNotExist):
+            print('Turn off light')
+            toggle_slot('OFF', slot_light_pin)
+            break

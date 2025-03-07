@@ -42,7 +42,7 @@ echo 'Updating and upgrading system'
 apt-get update && apt-get dist-upgrade -y
 echo ''
 echo 'Installing dependencies'
-apt-get install build-essential libssl-dev libffi-dev python3-dev python3-venv python3-pip nginx gunicorn git systemd -y
+apt-get install build-essential libssl-dev libffi-dev python3-dev python3-venv python3-pip nginx gunicorn git systemd redis-server -y
 echo ''
 echo 'Creating src directory'
 mkdir /home/sudoadmin/src
@@ -78,6 +78,7 @@ chmod +x /home/sudoadmin/src/ojopisowifi/sweep.py
 echo ''
 echo 'Copying system files to target locations'
 cp /home/sudoadmin/src/ojopisowifi/files/gunicorn.service /etc/systemd/system/gunicorn.service
+cp /home/sudoadmin/src/ojopisowifi/files/celery.service /etc/systemd/system/celery.service
 cp /home/sudoadmin/src/ojopisowifi/files/hooks.service /etc/systemd/system/hooks.service
 cp /home/sudoadmin/src/ojopisowifi/files/opw_init.service /etc/systemd/system/opw_init.service
 cp /home/sudoadmin/src/ojopisowifi/files/sweep.service /etc/systemd/system/sweep.service
@@ -92,8 +93,14 @@ echo ''
 echo 'Reloading daemon files'
 systemctl daemon-reload
 echo ''
+echo 'Enabling redis service'
+systemctl enable redis-server.service
+echo ''
 echo 'Enabling gunicorn service'
 systemctl enable gunicorn.service
+echo ''
+echo 'Enabling celery service'
+systemctl enable celery.service
 echo ''
 echo 'Enabling hooks service'
 systemctl enable hooks.service
@@ -101,8 +108,13 @@ echo ''
 echo 'Enabling opw_init service'
 systemctl enable opw_init.service
 echo ''
+echo 'Enabling client sweeper service'
+systemctl enable sweep.service
+echo ''
 echo 'Starting services'
 systemctl start gunicorn.service
+systemctl start redis-server
+systemctl start celery.service
 systemctl start hooks.service
 systemctl start opw_init.service
 systemctl start sweep.service

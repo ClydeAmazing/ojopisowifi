@@ -1,0 +1,15 @@
+[Unit]
+Description=Celery Service for OJO Pisowifi
+After=network.target
+
+[Service]
+Type=simple
+User=sudoadmin
+Group=sudo
+WorkingDirectory=/home/sudoadmin/src/ojopisowifi
+ExecStart=/home/sudoadmin/src/venv/bin/celery -A opw worker -P eventlet --concurrency=2 --max-tasks-per-child=10 --loglevel=info
+ExecStop=/home/sudoadmin/src/venv/bin/celery -A opw control shutdown
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

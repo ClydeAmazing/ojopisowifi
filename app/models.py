@@ -126,30 +126,30 @@ class Clients(models.Model):
 
     def Disconnect(self):
         """
-        Removes session time of the client
+        Removes client session time and disconnect the client (Hard disconnect)
         """
-        success_flag = False
-        if self.Connection_Status == 'Connected':
-            self.Expire_On = None
-            self.Connected_On = None
-            self.Time_Left = timedelta(0)
-            self.Notified_Flag = False
-            self.save()
-            success_flag = True
-        return success_flag
+        if self.Connection_Status != 'Connected':
+            return False
+
+        self.Expire_On = None
+        self.Connected_On = None
+        self.Time_Left = timedelta(0)
+        self.Notified_Flag = False
+        self.save()
+        return True
 
     def Pause(self):
         """
         Removes client running time and put the remaining time on the self.Time_Left field 
-        for future use (or during Resume process)
+        for future use (or during Resume process) (Soft Disconnect)
         """
-        success_flag = False
-        if self.Connection_Status == 'Connected':
-            self.Time_Left = self.running_time
-            self.Expire_On = None
-            self.save()
-            success_flag = True
-        return success_flag
+        if self.Connection_Status != 'Connected':
+            return False
+
+        self.Time_Left = self.running_time
+        self.Expire_On = None
+        self.save()
+        return True
 
     class Meta:
         verbose_name = 'Client'

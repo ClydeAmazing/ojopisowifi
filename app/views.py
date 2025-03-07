@@ -6,11 +6,8 @@ from django.utils import timezone
 from django.db.models import F
 from datetime import timedelta
 from app import models
-from app.opw import api_response
 from app.tasks import insert_coin
 from app.utils import get_active_clients
-from threading import Thread as BaseThread
-from django.db import close_old_connections
 
 def is_ajax(request):
     return request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest'
@@ -194,8 +191,9 @@ class Portal(View):
                     if not created:
                         coin_queue.save()
 
-                    # Start listening for inserted coins
+                    # Check coin slot and turn off slot after the delay
                     insert_coin.delay(client.id, settings['slot_light_pin'])
+
                     messages.success(request, 'Please insert your coin(s).')
                 else:
                     messages.error(request, 'Someone is still paying. Please try again later.')
