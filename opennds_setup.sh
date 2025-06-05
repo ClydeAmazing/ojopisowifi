@@ -21,7 +21,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Installing build dependencies"
-if ! apt update || ! apt install -y build-essential php-cli wget tar gcc make pkg-config ; then
+if ! apt update || ! apt install -y build-essential php-cli wget tar gcc make pkg-config dnsutils; then
     echo "Error installing build dependencies. Exiting."
     exit 1
 fi
