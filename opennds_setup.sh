@@ -62,7 +62,7 @@ if ! wget "https://codeload.github.com/opennds/opennds/tar.gz/v${OPENNDS_VERSION
 fi
 
 tar -xf "v${OPENNDS_VERSION}"
-cd "opennds-${OPENNDS_VERSION}" || exit 1
+cd "openNDS-${OPENNDS_VERSION}" || exit 1
 
 echo ""
 echo "Building OpenNDS"
