@@ -2,7 +2,7 @@
 
 # Define versions
 LIBMICROHTTPD_VERSION="0.9.71"
-OPENNDS_VERSION="9.9.1"
+OPENNDS_VERSION="10.3.1"
 
 # Function to handle cleanup
 cleanup() {
