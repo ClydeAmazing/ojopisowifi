@@ -7,9 +7,10 @@ OPENNDS_VERSION="10.3.1"
 # Function to handle cleanup
 cleanup() {
     echo "Cleaning up..."
+    cd ..
     # Remove downloaded tarballs and extracted directories
-    rm -rf "libmicrohttpd-${LIBMICROHTTPD_VERSION}" "libmicrohttpd-${LIBMICROHTTPD_VERSION}.tar.gz"
-    rm -rf "opennds-${OPENNDS_VERSION}" "v${OPENNDS_VERSION}"
+    rm -rf "libmicrohttpd-*"
+    rm -rf "openNDS-*" "v*"
     echo "Cleanup complete."
 }
 
