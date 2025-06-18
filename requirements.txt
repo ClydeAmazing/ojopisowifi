@@ -9,6 +9,7 @@ requests==2.27.1
 gunicorn==20.1.0
 whitenoise==6.2.0
 OPi.GPIO==0.5.2
+RPi.GPIO==0.7.1
 celery==5.3.1
 eventlet==0.39.1
 redis==4.6.0
